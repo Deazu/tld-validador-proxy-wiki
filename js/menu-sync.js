@@ -1,6 +1,6 @@
 /**
- * Resalta la entrada correcta del menú lateral (y dropdown móvil) según la página
- * y la ancla (#hash). IntersectionObserver + geometría para reflejar la sección visible al hacer scroll.
+ * Resalta entradas del menú (sidebar + offcanvas) según página y ancla (#hash).
+ * IntersectionObserver + geometría para reflejar la sección visible al hacer scroll.
  */
 (function () {
   "use strict";
@@ -30,106 +30,92 @@
     return i >= 0 ? href.slice(i + 1) : "";
   }
 
-  function clearNavActive(nav) {
-    if (!nav) return;
-    nav.querySelectorAll("a.active").forEach(function (a) {
+  function clearNavActive() {
+    document.querySelectorAll("nav.wiki-sidebar-nav a.active").forEach(function (a) {
       a.classList.remove("active");
     });
   }
 
-  function activateSublink(nav, subById, id) {
-    if (!id || !subById[id]) return false;
-    clearNavActive(nav);
-    subById[id].classList.add("active");
-    var el = subById[id];
-    while (el && el.previousElementSibling) {
-      el = el.previousElementSibling;
-      if (el.classList && el.classList.contains("wiki-nav-link-parent")) {
-        el.classList.add("active");
-        break;
+  function expandAccordionContaining(el) {
+    if (!el) return;
+    var collapse = el.closest(".accordion-collapse");
+    if (!collapse) return;
+    collapse.classList.add("show");
+    var header = collapse.previousElementSibling;
+    if (header && header.classList.contains("accordion-header")) {
+      var btn = header.querySelector(".accordion-button");
+      if (btn) {
+        btn.classList.remove("collapsed");
+        btn.setAttribute("aria-expanded", "true");
       }
     }
-    mirrorMobileFromSidebar();
-    return true;
   }
 
-  function mirrorMobileFromSidebar() {
-    var page = currentPage();
-    var mobile = document.querySelector(".wiki-mobile-bar");
-    if (!mobile) return;
-    mobile.querySelectorAll(".dropdown-item.active").forEach(function (a) {
-      a.classList.remove("active");
-    });
-    mobile.querySelectorAll(".dropdown-item[href]").forEach(function (item) {
-      var h = item.getAttribute("href") || "";
-      var file = hrefPage(h);
-      if (file === page) item.classList.add("active");
+  function activateHrefExact(href) {
+    if (!href) return;
+    document.querySelectorAll("nav.wiki-sidebar-nav a").forEach(function (a) {
+      if ((a.getAttribute("href") || "") === href) {
+        a.classList.add("active");
+        expandAccordionContaining(a);
+      }
     });
   }
 
   function setFromLocation() {
     var page = currentPage();
     var hash = (location.hash || "").replace(/^#/, "");
-    var nav = document.querySelector(".wiki-sidebar-nav");
-    if (!nav) {
-      mirrorMobileFromSidebar();
-      return;
-    }
+    clearNavActive();
 
-    clearNavActive(nav);
-
-    var sublinks = nav.querySelectorAll("a.wiki-nav-sublink[href*='#']");
-    var matchedSub = null;
     if (hash) {
-      sublinks.forEach(function (a) {
+      var matchedHref = null;
+      document.querySelectorAll("nav.wiki-sidebar-nav a[href*='#']").forEach(function (a) {
         var h = a.getAttribute("href") || "";
-        if (hrefPage(h) === page && hrefHash(h) === hash) matchedSub = a;
+        if (hrefPage(h) === page && hrefHash(h) === hash) matchedHref = h;
       });
-    }
-
-    if (matchedSub) {
-      matchedSub.classList.add("active");
-      var el = matchedSub;
-      while (el && el.previousElementSibling) {
-        el = el.previousElementSibling;
-        if (el.classList && el.classList.contains("wiki-nav-link-parent")) {
-          el.classList.add("active");
-          break;
-        }
-      }
-    } else {
-      nav.querySelectorAll("a.wiki-nav-link").forEach(function (a) {
-        if (a.classList.contains("wiki-nav-sublink")) return;
-        var h = a.getAttribute("href") || "";
-        if (h.indexOf("#") >= 0) return;
-        if (hrefPage(h) === page) a.classList.add("active");
-      });
-      if (page === "crypto-transport.html") {
-        var parent = nav.querySelector(
-          'a.wiki-nav-link-parent[href*="crypto-transport"]'
-        );
-        if (parent && !nav.querySelector("a.wiki-nav-sublink.active")) {
-          parent.classList.add("active");
-        }
+      if (matchedHref) {
+        activateHrefExact(matchedHref);
+        return;
       }
     }
 
-    mirrorMobileFromSidebar();
+    document.querySelectorAll("nav.wiki-sidebar-nav a.wiki-nav-link").forEach(function (a) {
+      if (a.classList.contains("wiki-nav-sublink")) return;
+      var h = a.getAttribute("href") || "";
+      if (hrefHash(h)) return;
+      if (hrefPage(h) === page) {
+        a.classList.add("active");
+        expandAccordionContaining(a);
+      }
+    });
+  }
+
+  function buildScrollSpyMap() {
+    var page = currentPage();
+    var subById = {};
+    document.querySelectorAll("nav.wiki-sidebar-nav a[href*='#']").forEach(function (a) {
+      var h = a.getAttribute("href") || "";
+      if (hrefPage(h) !== page) return;
+      var id = hrefHash(h);
+      if (!id || !document.getElementById(id)) return;
+      if (!subById[id]) subById[id] = [];
+      subById[id].push(a);
+    });
+    return subById;
+  }
+
+  function activateSublinkAll(subById, id) {
+    if (!id || !subById[id] || !subById[id].length) return false;
+    clearNavActive();
+    subById[id].forEach(function (a) {
+      a.classList.add("active");
+      expandAccordionContaining(a);
+    });
+    return true;
   }
 
   function initScrollSpy() {
     var page = currentPage();
-    var nav = document.querySelector(".wiki-sidebar-nav");
-    if (!nav) return;
-
-    var subById = {};
-    nav.querySelectorAll("a.wiki-nav-sublink[href*='#']").forEach(function (a) {
-      var h = a.getAttribute("href") || "";
-      if (hrefPage(h) !== page) return;
-      var id = hrefHash(h);
-      if (id && document.getElementById(id)) subById[id] = a;
-    });
-
+    var subById = buildScrollSpyMap();
     var ids = Object.keys(subById);
     if (ids.length === 0) return;
 
@@ -164,7 +150,13 @@
         }
       }
 
-      if (bestId) activateSublink(nav, subById, bestId);
+      if (bestId) {
+        activateSublinkAll(subById, bestId);
+      } else if (
+        document.querySelector("nav.wiki-sidebar-nav a.wiki-nav-sublink.active")
+      ) {
+        setFromLocation();
+      }
     }
 
     var ticking = false;

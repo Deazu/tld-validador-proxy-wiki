@@ -2,7 +2,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap");
 
 :root {
-  --wiki-sidebar-width: 280px;
+  --wiki-sidebar-width: 304px;
   --wiki-content-max: 1100px;
   --wiki-accent: #3d8bfd;
   --wiki-accent-soft: rgba(61, 139, 253, 0.15);
@@ -699,4 +699,148 @@ body.wiki-mermaid-lightbox-open {
 .wiki-page-search-results a:hover {
   background: #f1f5f9;
   color: #2563eb;
+}
+
+/* ——— Navegación: acordeón + mapa mental (sidebar / offcanvas) ——— */
+.wiki-sidebar-inner--nav {
+  padding-top: 0.35rem;
+}
+
+.wiki-sidebar-accordion .accordion-item.wiki-sidebar-acc-item {
+  background: transparent;
+  border: none;
+  margin-bottom: 0.2rem;
+}
+
+.wiki-sidebar-accordion .accordion-button.wiki-sidebar-acc-btn {
+  background: rgba(255, 255, 255, 0.04);
+  color: #e6edf3;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.48rem 0.5rem;
+  border-radius: 0.45rem !important;
+  border: 1px solid transparent;
+  box-shadow: none !important;
+  gap: 0;
+}
+
+.wiki-sidebar-accordion .accordion-button.wiki-sidebar-acc-btn:not(.collapsed) {
+  background: rgba(61, 139, 253, 0.14);
+  border-color: rgba(61, 139, 253, 0.28);
+  color: #fff;
+}
+
+.wiki-sidebar-accordion .accordion-button.wiki-sidebar-acc-btn::after {
+  filter: invert(0.88);
+  opacity: 0.55;
+  transform: scale(0.82);
+}
+
+.wiki-sidebar-accordion .accordion-button.wiki-sidebar-acc-btn:focus {
+  box-shadow: none;
+  border-color: rgba(61, 139, 253, 0.35);
+}
+
+.wiki-sidebar-accordion .accordion-button.wiki-sidebar-acc-btn:focus-visible {
+  outline: 2px solid rgba(61, 139, 253, 0.55);
+  outline-offset: 2px;
+}
+
+.wiki-sidebar-acc-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  margin-right: 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  border-radius: 0.3rem;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--wiki-accent);
+  flex-shrink: 0;
+}
+
+.wiki-sidebar-acc-title-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.06rem;
+  min-width: 0;
+  text-align: left;
+}
+
+.wiki-sidebar-acc-title {
+  font-size: 0.68rem;
+  letter-spacing: 0.07em;
+  line-height: 1.2;
+}
+
+.wiki-sidebar-acc-sub {
+  font-size: 0.58rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0.03em;
+  color: var(--wiki-sidebar-muted);
+  line-height: 1.2;
+}
+
+.wiki-sidebar-acc-body {
+  padding: 0.3rem 0.2rem 0.45rem !important;
+  margin-top: 0.1rem;
+  background: rgba(0, 0, 0, 0.14);
+  border-radius: 0 0 0.45rem 0.45rem;
+}
+
+.wiki-sidebar-nav .wiki-nav-link {
+  padding: 0.32rem 0.55rem !important;
+  font-size: 0.845rem;
+  align-items: flex-start;
+}
+
+.wiki-nav-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.06rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.wiki-nav-label {
+  line-height: 1.28;
+}
+
+.wiki-nav-tagline {
+  font-size: 0.64rem;
+  font-weight: 400;
+  line-height: 1.25;
+  color: #8b949e;
+}
+
+.wiki-sidebar-nav .wiki-nav-link.active .wiki-nav-tagline {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.wiki-sidebar-nav .wiki-nav-sublink {
+  padding: 0.26rem 0.6rem 0.26rem 1.45rem !important;
+  font-size: 0.775rem;
+}
+
+.wiki-offcanvas.wiki-offcanvas--dark {
+  background: var(--wiki-sidebar-bg);
+  color: #e6edf3;
+}
+
+.wiki-offcanvas--dark .offcanvas-header {
+  padding: 0.85rem 1rem;
+}
+
+.wiki-content .offcanvas.wiki-offcanvas {
+  --bs-offcanvas-width: min(100vw - 0.5rem, 322px);
+}
+
+.wiki-justificacion-anchor {
+  scroll-margin-top: 4.5rem;
 }

@@ -8,62 +8,41 @@
   <link href="css/wiki.css" rel="stylesheet">
   <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
   <script defer src="js/wiki-init.js"></script>
+  <script defer src="js/wiki-nav-inject.js"></script>
   <script defer src="js/menu-sync.js"></script>
   <script defer src="js/wiki-chrome.js"></script>
 </head>
 <body class="wiki-body bg-light">
   <div class="wiki-layout">
     <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
-      <div class="wiki-sidebar-inner p-3 flex-grow-1 overflow-auto">
-        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-1 px-2">
+      <div class="wiki-sidebar-inner wiki-sidebar-inner--nav p-2 flex-grow-1 overflow-auto">
+        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-2 px-2">
           <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
           <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
         </a>
-        <nav class="nav flex-column wiki-sidebar-nav pt-2" aria-label="Navegación principal">
-          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🚀</span> PROYECTO</div>
-          <a class="nav-link wiki-nav-link" href="index.html"><span class="wiki-nav-ico" aria-hidden="true">🛡️</span> Misión</a>
-          <a class="nav-link wiki-nav-link" href="flow.html"><span class="wiki-nav-ico" aria-hidden="true">📊</span> Flujo General</a>
-          <a class="nav-link wiki-nav-link" href="data-dictionary.html"><span class="wiki-nav-ico" aria-hidden="true">📖</span> Diccionario de Datos</a>
-          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">📜</span> INFRAESTRUCTURA</div>
-          <a class="nav-link wiki-nav-link" href="network.html"><span class="wiki-nav-ico" aria-hidden="true">📋</span> samconfig.toml</a>
-          <a class="nav-link wiki-nav-link active" href="deployment.html"><span class="wiki-nav-ico" aria-hidden="true">📄</span> template.yaml</a>
-          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🔐</span> SEGURIDAD</div>
-          <a class="nav-link wiki-nav-link" href="crypto-app.html"><span class="wiki-nav-ico" aria-hidden="true">🔑</span> Cifrado App</a>
-          <a class="nav-link wiki-nav-link wiki-nav-link-parent" href="crypto-transport.html#diagrama-interaccion"><span class="wiki-nav-ico" aria-hidden="true">🔒</span> Transporte mTLS/CRL</a>
-          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#diagrama-interaccion">Diagrama de secuencia</a>
-          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#codigo-fuente">Código fuente (módulos)</a>
-          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#variables-efs">Variables y EFS</a>
-          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#rendimiento-lambda">Rendimiento Lambda</a>
-          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#seguridad-cumplimiento">Seguridad</a>
-          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#depuracion-troubleshooting">Depuración</a>
-          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#evolucion-proximos-pasos">Evolución</a>
-          <a class="nav-link wiki-nav-link" href="connectivity-telered.html"><span class="wiki-nav-ico" aria-hidden="true">🌐</span> Conectividad Telered</a>
-          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🛠️</span> COMPONENTES</div>
-          <a class="nav-link wiki-nav-link" href="identity.html"><span class="wiki-nav-ico" aria-hidden="true">👤</span> Identidad (Canal)</a>
-          <a class="nav-link wiki-nav-link" href="logger.html"><span class="wiki-nav-ico" aria-hidden="true">📝</span> Logger</a>
+        <nav class="nav flex-column wiki-sidebar-nav pt-1" aria-label="Navegación principal">
+          <div id="wikiSidebarNavMount"></div>
         </nav>
       </div>
     </aside>
     <main class="wiki-content flex-grow-1">
       <div class="wiki-mobile-bar d-md-none mb-3">
-        <div class="dropdown">
-          <button class="btn btn-wiki-menu dropdown-toggle w-100 rounded-pill py-2" type="button" data-bs-toggle="dropdown">Menú wiki</button>
-          <ul class="dropdown-menu w-100 shadow border-0">
-            <li><h6 class="dropdown-header"><span aria-hidden="true">🚀</span> PROYECTO</h6></li>
-            <li><a class="dropdown-item" href="index.html">🛡️ Misión</a></li>
-            <li><a class="dropdown-item" href="flow.html">📊 Flujo General</a></li>
-            <li><a class="dropdown-item" href="data-dictionary.html">📖 Diccionario de Datos</a></li>
-            <li><h6 class="dropdown-header"><span aria-hidden="true">📜</span> INFRAESTRUCTURA</h6></li>
-            <li><a class="dropdown-item" href="network.html">📋 samconfig.toml</a></li>
-            <li><a class="dropdown-item active" href="deployment.html">📄 template.yaml</a></li>
-            <li><h6 class="dropdown-header"><span aria-hidden="true">🔐</span> SEGURIDAD</h6></li>
-            <li><a class="dropdown-item" href="crypto-app.html">🔑 Cifrado App</a></li>
-            <li><a class="dropdown-item" href="crypto-transport.html#diagrama-interaccion">🔒 Transporte mTLS/CRL</a></li>
-            <li><a class="dropdown-item" href="connectivity-telered.html">🌐 Conectividad Telered</a></li>
-            <li><h6 class="dropdown-header"><span aria-hidden="true">🛠️</span> COMPONENTES</h6></li>
-            <li><a class="dropdown-item" href="identity.html">👤 Identidad (Canal)</a></li>
-            <li><a class="dropdown-item" href="logger.html">📝 Logger</a></li>
-          </ul>
+        <button class="btn btn-wiki-menu w-100 rounded-pill py-2 d-flex align-items-center justify-content-center gap-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#wikiMenuOffcanvas" aria-controls="wikiMenuOffcanvas" aria-label="Abrir menú de navegación">
+          <span aria-hidden="true">☰</span> Menú wiki
+        </button>
+      </div>
+      <div class="offcanvas offcanvas-start wiki-offcanvas wiki-offcanvas--dark" tabindex="-1" id="wikiMenuOffcanvas" aria-labelledby="wikiMenuOffcanvasLabel">
+        <div class="offcanvas-header border-bottom border-secondary border-opacity-25">
+          <div class="d-flex flex-column">
+            <h2 class="h6 offcanvas-title text-white mb-0" id="wikiMenuOffcanvasLabel">tld-validador-proxy</h2>
+            <span class="small text-white-50">Mapa mental de la arquitectura</span>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+        </div>
+        <div class="offcanvas-body p-2 pt-1">
+          <nav class="nav flex-column wiki-sidebar-nav" aria-label="Navegación móvil">
+            <div id="wikiOffcanvasNavMount"></div>
+          </nav>
         </div>
       </div>
 
