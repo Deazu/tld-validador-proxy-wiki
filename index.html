@@ -110,6 +110,23 @@
     Op-->>Inv: paquete abierto o error tipado</pre>
         </div>
 
+        <h2 class="h4" id="justificacion-observabilidad">Justificación: Observabilidad Forense y Monitoreo</h2>
+        <p>
+          La tabla <code>tld-validador-proxy-telemetry</code> no es un adorno de auditoría: es la <strong>cinta negra</strong> operativa del proxy.
+          Cada invocación puede dejar varias filas ordenadas por fase (<code>Handshake_Start</code>, <code>CRL_Check</code>, <code>HTTP_Request</code>, etc.), con <code>correlationId</code> compartido y <code>detail.internalCode</code> alineado a la matriz <code>PROXY_ERR_*</code>.
+          Desde datos estructurados (más allá de un 502 opaco en el cliente) el equipo puede construir <strong>dashboards de salud por canal</strong> en tiempo casi real: ratios de éxito por integración, latencias por etapa y tendencias antes de que el negocio abra un ticket.
+        </p>
+        <p>
+          El proxy registra el <strong>punto exacto de fallo</strong> en la cadena de confianza y transporte — resolución de nombres y ruta hacia el host (<abbr title="Domain Name System">DNS</abbr> / conectividad), negociación <strong>TLS</strong>, validación de <strong>CRL</strong>, <strong>mTLS</strong> (certificado o clave de cliente, passphrase, rechazo del peer) y <strong>timeouts</strong> de socket o lectura HTTP.
+          Esa granularidad permite a <strong>operaciones</strong> acotar en minutos si el incidente es PKI, red, el validador remoto o la propia Lambda, en lugar de reuniones adivinando qué capa falló.
+          El marco del <strong>portero</strong> (TLS + CRL antes del cuerpo) y el <strong>doble pasaporte</strong> (mTLS) sigue siendo la narrativa; la telemetría es la lectura objetiva de qué tramo del pasillo quedó cerrado.
+        </p>
+        <p class="small text-muted mb-0">
+          Contrato de esquema, TTL y matriz de códigos: <a href="data-dictionary.html#tabla-telemetry">Diccionario de Datos — telemetría</a> ·
+          Orquestación en handler: <a href="flow.html#orquestador-app">Flujo General / <code>app.js</code></a> ·
+          Módulo de emisión: <a href="crypto-transport.html#codigo-fuente"><code>telemetry.js</code></a>.
+        </p>
+
         <h2 class="h4">Por qué centralizar el cifrado</h2>
         <p>
           En <code>tld-api-alias</code>, el módulo <code>operacionesPaquete.js</code> define funciones con <strong>tres</strong> argumentos
@@ -158,7 +175,8 @@
           Wiki estática — <code>index.html</code>. Cifrado de payload: <a href="crypto-app.html">Cifrado App</a> ·
           TLS/CRL: <a href="crypto-transport.html#diagrama-interaccion">Transporte mTLS/CRL</a> ·
           <a href="connectivity-telered.html">Conectividad Telered (justificación)</a> ·
-          <a href="flow.html">Flujo General</a> · <a href="data-dictionary.html">Diccionario de Datos</a> · <a href="logger.html">Logger</a>.
+          <a href="flow.html">Flujo General</a> · <a href="data-dictionary.html">Diccionario de Datos</a> ·
+          <a href="index.html#justificacion-observabilidad">Observabilidad y dashboards</a> · <a href="logger.html">Logger</a>.
         </p>
       </div>
     </main>

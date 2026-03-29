@@ -43,6 +43,7 @@
           <a class="nav-link wiki-nav-sublink wiki-nav-link" href="connectivity-telered.html#arquitectura-proxy">Arquitectura del Proxy</a>
           <a class="nav-link wiki-nav-sublink wiki-nav-link" href="connectivity-telered.html#diagrama-transporte-avanzado">Diagrama transporte</a>
           <a class="nav-link wiki-nav-sublink wiki-nav-link" href="connectivity-telered.html#modelo-datos-canal">Modelo DynamoDB</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="connectivity-telered.html#whitelist-transicion">Transición whitelist</a>
           <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🛠️</span> COMPONENTES</div>
           <a class="nav-link wiki-nav-link" href="identity.html"><span class="wiki-nav-ico" aria-hidden="true">👤</span> Identidad (Canal)</a>
           <a class="nav-link wiki-nav-link" href="logger.html"><span class="wiki-nav-ico" aria-hidden="true">📝</span> Logger</a>
@@ -87,6 +88,7 @@
         <ul class="mb-0">
           <li><a href="#hallazgos-legacy">1. Por qué el Proxy es necesario (hallazgos legacy)</a></li>
           <li><a href="#arquitectura-proxy">2. Nueva arquitectura de conectividad</a></li>
+          <li><a href="#whitelist-transicion">2.1.1. Estrategia de Transición de Whitelist</a></li>
           <li><a href="#mtls-secrets-manager">2.4. mTLS y Secrets Manager (passphrase)</a></li>
           <li><a href="#diagrama-transporte-avanzado">3. Diagrama de secuencia (transporte avanzado)</a></li>
           <li><a href="#modelo-datos-canal">4. Modelo de datos en <code>tld-validador-canal</code></a></li>
@@ -167,6 +169,21 @@
             <strong>Proxy:</strong> “¿Qué perfil TLS declaró este canal en DynamoDB?” → un solo cliente HTTPS aplica CA, CRL, mTLS y SNI según ese perfil.
           </p>
         </div>
+
+        <h3 class="h5 mt-4" id="whitelist-transicion">2.1.1. Estrategia de Transición de Whitelist</h3>
+        <p>
+          El paso de “lista de prefijos en <code>URL_CA_TELERED</code>” a “perfil por canal en DynamoDB” no puede ser un <em>big bang</em> que deje fuera a integraciones aún no migradas en la tabla.
+          El contrato de despliegue híbrido es:
+        </p>
+        <ol class="small">
+          <li><strong>Primero:</strong> el proxy resuelve el canal y lee el <strong>perfil de transporte</strong> desde DynamoDB (<code>tlsProfile</code>, rutas EFS, <code>mtlsActive</code>, etc.). Si el ítem existe y es coherente, esa configuración manda por completo: es la decisión del <strong>portero</strong> documentada en datos versionables.</li>
+          <li><strong>Fallback temporal:</strong> si para esa petición <strong>no</strong> hay perfil utilizable en DynamoDB (canal ausente, atributos incompletos o despliegue gradual de filas), el motor de transporte aplica la variable de entorno <code>URL_CA_TELERED</code> como <strong>lista de prefijos de compatibilidad</strong> heredada del legacy: si la URL objetivo coincide, se aplica el mismo criterio Telered/EFS que hoy evita caer en axios sin CA corporativa.</li>
+          <li><strong>Salida del fallback:</strong> cuando todos los canales productivos tengan fila completa en <code>tld-validador-canal</code>, el equipo puede retirar o vaciar <code>URL_CA_TELERED</code> en SAM tras ventana de observación; hasta entonces, el fallback garantiza <strong>compatibilidad 100&nbsp;%</strong> durante el despliegue sin doble despliegue forzoso por cada nuevo hostname.</li>
+        </ol>
+        <p class="small text-muted mb-0">
+          Esta transición no sustituye la política a larg plazo (datos en DynamoDB); solo acota el riesgo operativo entre versiones de Lambda y poblados de tabla.
+          Detalle de variables: <a href="network.html">samconfig.toml / entorno</a> · modelo de canal: <a href="data-dictionary.html#tabla-canal">Diccionario de Datos</a>.
+        </p>
 
         <h3 class="h5 mt-4" id="implementacion-mtls">2.2. Implementación de mTLS (la identidad del Proxy)</h3>
         <p>

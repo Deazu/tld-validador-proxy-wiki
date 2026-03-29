@@ -333,6 +333,7 @@
                 <th scope="col">Atributo</th>
                 <th scope="col">Tipo</th>
                 <th scope="col">Descripción y ejemplo</th>
+                <th scope="col">TTL (Time To Live)</th>
               </tr>
             </thead>
             <tbody>
@@ -340,35 +341,57 @@
                 <td><code>correlationId</code></td>
                 <td>String</td>
                 <td>Identificador único de la petición end-to-end (API Gateway → proxy → validador). Ejemplo: UUID v4 o id generado en el borde. Todas las filas de una misma invocación comparten este valor en consultas forenses.</td>
+                <td class="small">Purgado con el ítem: <strong>30 días</strong> vía atributo <code>expiresAt</code> (estándar de tabla; ver fila <code>expiresAt</code>).</td>
               </tr>
               <tr>
-                <td><code>timestamp</code></td>
-                <td>Number</td>
-                <td>Epoch en milisegundos (<code>Date.now()</code>) del momento del evento. Ejemplo: <code>1712345678901</code>. Ordena la secuencia dentro del mismo <code>correlationId</code>.</td>
+                <td><code>timestamp</code> / <code>timestampIso</code></td>
+                <td>String (+ opcional Number)</td>
+                <td>
+                  <strong>Estándar de tiempo:</strong> todo instante de evento debe persistirse en <strong>ISO 8601 con precisión de milisegundos</strong>, p. ej. <code>2026-03-28T15:04:05.123Z</code> (sufijo <code>Z</code> UTC o offset explícito).
+                  Nombre recomendado del atributo: <code>timestampIso</code> o sobrecargar <code>timestamp</code> como String en nuevas versiones del contrato.
+                  Si el diseño de <strong>Sort Key</strong> o GSI exige ordenación numérica, puede añadirse <code>epochMs</code> (Number) <strong>derivado del mismo instante</strong>, sin contradecir el valor canónico ISO en consultas forenses y export a SIEM.
+                </td>
+                <td class="small">—</td>
               </tr>
               <tr>
                 <td><code>phase</code> / <code>eventType</code></td>
                 <td>String</td>
                 <td>En el código actual el campo se llama <code>phase</code>; conceptualmente es el <strong>tipo de evento</strong> del pipeline. Valores sugeridos: <code>Handshake_Start</code>, <code>CRL_Check</code>, <code>HTTP_Request</code>, <code>HTTP_Response</code>, <code>Error</code>. Ejemplo: <code>CRL_Check</code>.</td>
+                <td class="small">Purgado con el ítem: <strong>30 días</strong>.</td>
               </tr>
               <tr>
                 <td><code>outcome</code></td>
                 <td>String</td>
                 <td>Resultado de la fase: por defecto <code>OK</code> en código; en fallos usar <code>FAIL</code> o códigos cortos acordados. Ejemplo: <code>FAIL</code> junto a <code>detail.code = TLS_HANDSHAKE</code>.</td>
+                <td class="small">Purgado con el ítem: <strong>30 días</strong>.</td>
               </tr>
               <tr>
                 <td><code>durationMs</code></td>
                 <td>Number</td>
                 <td>Duración opcional de la fase en milisegundos (útil para p95/p99 por etapa). Ejemplo: <code>87</code> para un handshake completado.</td>
+                <td class="small">Purgado con el ítem: <strong>30 días</strong>.</td>
               </tr>
               <tr>
                 <td><code>detail</code></td>
                 <td>Map / Object</td>
                 <td>Metadatos técnicos <strong>sin PII</strong>: códigos de error, fase interna, contadores. Debe incluir <code>internalCode</code> alineado a la matriz (p. ej. <code>PROXY_ERR_TLS_001</code>). Ejemplo: <code>{ "internalCode": "PROXY_ERR_CRL_002", "reason": "CERT_REVOKED", "phase": "CRL_Check" }</code>. No incluir cuerpos HTTP, DN completos ni tokens.</td>
+                <td class="small">Purgado con el ítem: <strong>30 días</strong>.</td>
+              </tr>
+              <tr>
+                <td><code>expiresAt</code></td>
+                <td>Number</td>
+                <td>
+                  Epoch Unix en <strong>segundos</strong> (formato que espera DynamoDB para la característica TTL) fijado en cada <code>PutItem</code> a aproximadamente <code>now_s + 30 × 86400</code>.
+                  Habilitar en la tabla la opción <strong>Time to Live</strong> apuntando a este atributo para <strong>autolimpieza</strong> sin jobs batch: tras ~30 días el servicio elimina el ítem de forma asíncrona, acotando coste y superficie de datos históricos.
+                </td>
+                <td class="small"><strong>Sí — 30 días</strong> (estándar de retención; ajustable por entorno con gobernanza de datos).</td>
               </tr>
             </tbody>
           </table>
         </div>
+        <p class="small text-muted mb-0">
+          <strong>Ciclo de vida:</strong> la retención por defecto es <strong>30 días</strong> por ítem. Cualquier otro campo de tiempo que se añada al esquema (p. ej. <code>ingestedAt</code> para pipelines downstream) debe seguir igualmente <strong>ISO 8601 con milisegundos</strong> en su representación intercambio; los consumidores de dashboards leen fechas humanas desde ese formato y, si hace falta, columnas numéricas derivadas para agregaciones.
+        </p>
         <h3 class="h5 mt-4">Claves DynamoDB e índices — <code>tld-validador-proxy-telemetry</code></h3>
         <div class="table-responsive">
           <table class="table table-sm table-bordered align-middle">

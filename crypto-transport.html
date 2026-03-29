@@ -491,7 +491,7 @@ module.exports = {
         <ol class="small">
           <li><strong>Nivel 1:</strong> cada llamada <code>emit</code> escribe un item con fase y resultado (<code>OK</code>/<code>FAIL</code>).</li>
           <li><strong>Nivel 2:</strong> el SDK v3 serializa tipos; <code>removeUndefinedValues</code> evita atributos vacíos en la tabla.</li>
-          <li><strong>Nivel 3:</strong> el fallo de telemetría no debe ocultar el error principal: se registra en consola y el flujo de negocio sigue su <code>reject</code> o respuesta de error.</li>
+          <li><strong>Nivel 3:</strong> el fallo al <strong>escribir</strong> telemetría no debe alterar la decisión de negocio ya tomada ni impedir el envío al validador; ver política <strong>Fail-Safe Telemetry</strong> debajo.</li>
         </ol>
         <p class="small text-muted">
           <strong>Ampliación — Razón del nombre:</strong> “telemetry” evita confundir estas trazas con métricas de negocio (facturación, usuarios). Es la <em>cinta negra</em> del vuelo: orden temporal de fases técnicas.
@@ -499,7 +499,7 @@ module.exports = {
         </p>
         <p class="small text-muted">
           <strong>Ampliación — De lo simple a lo complejo:</strong> DynamoDB ofrece escritura baja latencia y esquema flexible por item; <code>removeUndefinedValues</code> evita que el SDK envíe atributos vacíos que algunos validadores rechazan.
-          El <code>try/catch</code> interno es deliberado: si la tabla está caída, el negocio no debe fingir éxito, pero tampoco perder la señal del error original ya capturado arriba.
+          El <code>try/catch</code> interno es deliberado: un fallo de <code>PutItem</code> de telemetría no debe enmascarar un error de TLS ya detectado arriba, pero tampoco debe <strong>convertirse</strong> en un fallo adicional que impida completar la petición al validador cuando el camino HTTPS sigue siendo viable.
         </p>
         <h4 class="h6 text-secondary">Explicación línea por línea del código (para dummies)</h4>
         <ul class="small">
@@ -509,8 +509,14 @@ module.exports = {
           <li><strong>JSDoc de <code>emit</code>:</strong> contrato para quien llama: fases sugeridas y forma del evento.</li>
           <li><strong>Construcción de <code>item</code>:</strong> <code>timestamp</code> en epoch ms facilita ordenación en consultas; <code>outcome</code> default <code>OK</code>.</li>
           <li><strong><code>PutCommand</code>:</strong> escritura idempotente por clave compuesta si el diseño de tabla lo permite (según PK/SK del proyecto).</li>
-          <li><strong><code>catch</code>:</strong> solo <code>console.error</code> — no relanza, para no enmascarar el error de negocio que ya va camino al cliente.</li>
+          <li><strong><code>catch</code>:</strong> hoy usa <code>console.error</code>; en el proxy integrado debe sustituirse por <code>logger.Print</code> (misma semántica: no relanzar).</li>
         </ul>
+        <div class="alert alert-primary small" role="alert" id="fail-safe-telemetry">
+          <strong>Política «Fail-Safe Telemetry» (obligatoria en producción):</strong>
+          el fallo al persistir en <code>tld-validador-proxy-telemetry</code> <strong>nunca</strong> debe abortar la transacción principal ni impedir el envío cifrado hacia el validador.
+          El módulo (o el orquestador que envuelva <code>emit</code>) debe capturar la excepción del SDK, registrar el incidente con <code>logger.Print</code> (mensaje corto, sin volcar el item ni PII) y <strong>continuar</strong> el flujo: handshake, CRL, HTTP y respuesta al cliente según el estado real del validador.
+          La telemetría es la <em>cinta negra</em>: si la cinta falla, el avión sigue volando; operaciones se entera por logs y alarmas de escritura, no cortando integraciones.
+        </div>
         <div class="alert alert-warning small" role="alert">
           <strong>Seguridad:</strong> el campo <code>detail</code> debe evitar payloads, DN largos o cabeceras con tokens. Preferir hashes o códigos cortos. Cumplimiento: revisar retención TTL en la tabla y cifrado KMS en reposo.
         </div>
@@ -562,8 +568,9 @@ module.exports = { emit };
         <h4 class="h6 text-secondary mt-3">Notas de producción / mejores prácticas adicionales (<code>telemetry.js</code>)</h4>
         <ul class="small mb-5">
           <li>Definir GSI por <code>correlationId</code> + <code>timestamp</code> si las consultas forenses son frecuentes.</li>
-          <li>Alarmar sobre throttling de DynamoDB y errores <code>[telemetry]</code> en logs (indican pérdida de trazas).</li>
+          <li>Alarmar sobre throttling de DynamoDB y errores de telemetría en logs (indican pérdida de trazas); distinguir en runbook de fallos <strong>del validador</strong> frente a fallos <strong>solo</strong> de la tabla de telemetría.</li>
           <li><strong>Rendimiento:</strong> cada <code>emit</code> es I/O de red; agrupar fases en un solo item solo si el negocio lo permite (trade-off de granularidad).</li>
+          <li><strong>Fail-Safe:</strong> cumplir siempre la política en <a href="#fail-safe-telemetry">Fail-Safe Telemetry</a>; el código de ejemplo usa <code>console.error</code> hasta integrar <code>logger.Print</code>.</li>
         </ul>
 
         <!-- crl.js — política de revocación (CRL) -->
