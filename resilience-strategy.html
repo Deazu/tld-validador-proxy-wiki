@@ -55,14 +55,14 @@
         </p>
         <h1 class="h2 mb-2">Sistema de Resiliencia — Estrategia y <strong>Capa 1</strong> (síncrona)</h1>
         <p class="lead text-muted mb-3">
-          La <strong>Capa 1</strong> ejecuta reintentos <em>dentro de la misma invocación</em> del API del Proxy, antes de devolver respuesta al cliente interno.
-          Todo lo que aquí se describe es <strong>100&nbsp;% gobernado por datos</strong> en DynamoDB: si la tabla no activa la política, el comportamiento es el de un único intento (salvo reglas mínimas de producto que el equipo documente aparte).
+          La <strong>Capa 1</strong> materializa la <strong>Resiliencia Opt-in</strong> (bajo demanda) dentro de la misma invocación del API del Proxy: los reintentos solo existen si están declarados en datos; <em>nada es automático</em> sin filas y banderas coherentes en DynamoDB.
+          Es <strong>resiliencia controlada</strong> acotada al presupuesto temporal de la función y a la <strong>gestión de disponibilidad</strong> que negocio haya aprobado para esa operación (salvo reglas mínimas de producto documentadas aparte).
         </p>
 
         <nav class="wiki-inpage-toc small mb-4" aria-label="En esta página">
           <div class="fw-semibold mb-2">En esta página</div>
           <ul class="mb-0">
-            <li><a href="#filosofia-opt-in">Filosofía: reintento OPT-IN</a></li>
+            <li><a href="#filosofia-opt-in">Resiliencia Opt-in y filosofía</a></li>
             <li><a href="#https-client">El módulo <code>httpsClient</code></a></li>
             <li><a href="#time-budget">Presupuesto temporal (<code>getRemainingTimeInMillis</code>)</a></li>
             <li><a href="#portero-mensajeria">Portero y mensajería certificada</a></li>
@@ -71,10 +71,10 @@
         </nav>
 
         <section id="filosofia-opt-in" class="mt-4">
-          <h2 class="h3 border-0 pb-0">Filosofía: el reintento es <strong>OPT-IN</strong></h2>
+          <h2 class="h3 border-0 pb-0">Resiliencia Opt-in: el reintento solo bajo demanda</h2>
           <p>
             En muchos sistemas, el reintento automático es un “modo silencioso” que convierte cada llamada en una apuesta: duplica tráfico, rompe idempotencia débil y enmascara errores de contrato.
-            En el Proxy, la regla de oro es la inversa: <strong>por defecto no se reintenta</strong> salvo que un registro explícito en DynamoDB — típicamente en <code>tld-validador-canal-operacion</code> vía <code>retryPolicyActive</code> y límites asociados — autorice la máquina de reintentos para esa operación concreta.
+            En el Proxy rige la <strong>Resiliencia Opt-in</strong>: <strong>por defecto no se reintenta</strong> — no hay <em>resiliencia controlada</em> hasta que un registro explícito en DynamoDB — típicamente en <code>tld-validador-canal-operacion</code> vía <code>retryPolicyActive</code> y límites asociados — autorice la máquina de reintentos para esa operación concreta.
           </p>
           <p>
             Piensa en ello como la cláusula de un <strong>seguro de vida de la transacción</strong>: la póliza no se aplica sola; debe estar contratada y acotada en el registro del canal.

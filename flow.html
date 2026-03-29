@@ -57,7 +57,7 @@
             <li><a href="#paso-a-paso">Explicación por fase</a></li>
             <li><a href="#estrategia-validacion">Validación en AWS (consola, sin mocks)</a></li>
             <li><a href="business-value.html#monitoreo-salud">Observabilidad forense y dashboards (Valor y justificación)</a></li>
-            <li><a href="#pies-de-plomo">Estrategia «pies de plomo»</a></li>
+            <li><a href="#principios-diseno-seguro">Principios de Diseño Seguro</a></li>
           </ul>
         </nav>
 
@@ -363,11 +363,11 @@
           </p>
         </section>
 
-        <section id="pies-de-plomo" class="mt-5">
-          <h2 class="h4">Estrategia «pies de plomo»</h2>
+        <section id="principios-diseno-seguro" class="mt-5">
+          <h2 class="h4">Principios de Diseño Seguro</h2>
           <p>
-            Cada capa asume que la anterior puede fallar de forma segura: sin logs crudos, sin TLS relajado, sin cifrado con firma incompleta.
-            La documentación y el código comparten el mismo contrato para que un ingeniero nuevo no tenga que adivinar parámetros ocultos entre repositorios.
+            Cada capa asume que la anterior puede fallar de forma segura: <strong>seguridad defensiva</strong> por defecto — sin logs crudos, sin TLS relajado, sin cifrado con firma incompleta — y <strong>criterios de integridad operativa</strong> compartidos entre módulos.
+            La documentación y el código obedecen el mismo contrato (<strong>gobierno de datos</strong> y de trazas) para que un ingeniero nuevo no adivine parámetros ocultos entre repositorios, en línea con <strong>Validación de Confianza Cero (Zero Trust)</strong> en el tramo hacia el validador.
           </p>
         </section>
 

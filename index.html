@@ -48,11 +48,11 @@
 
       <div class="wiki-content-inner p-4 p-lg-5">
         <div class="wiki-hero wiki-hero--dashboard">
-          <span class="wiki-hero-badge">PIES DE PLOMO</span>
+          <span class="wiki-hero-badge">Principios de Diseño Seguro</span>
           <h1 class="h2 mb-2 text-white">Misión del <code class="text-info">tld-validador-proxy</code></h1>
           <p class="wiki-hero-tagline mb-3">Soberanía tecnológica y seguridad proactiva para la validación de canales</p>
           <p class="lead mb-0">
-            Portal técnico: un solo punto de salida controlado hacia validadores — cifrado híbrido correcto, <strong>Conectividad Segura (TLS / mTLS)</strong> con CA y CRL en EFS, <strong>identificación del proxy ante el validador con certificado de cliente mTLS</strong> cuando el canal lo exige, identidad de negocio en DynamoDB y trazas sin filtrar secretos.
+            Portal técnico: un solo punto de salida controlado hacia validadores — cifrado híbrido correcto, <strong>Conectividad Segura (TLS / mTLS)</strong> con CA y CRL en EFS, <strong>identificación del proxy ante el validador mediante certificado de cliente en TLS / mTLS</strong> cuando el canal lo exige, identidad de negocio en DynamoDB y trazas sin filtrar secretos.
           </p>
         </div>
 
@@ -66,7 +66,7 @@
               </p>
               <ul class="small text-secondary mb-3 ps-3 wiki-cta-stakeholder-list">
                 <li class="mb-1"><strong>Corrección del flujo de validación CRL</strong> <span class="text-muted">(Seguridad proactiva: revocación antes del envío del body).</span></li>
-                <li class="mb-1"><strong>Identidad del Proxy mediante mTLS</strong> <span class="text-muted">(certificado de cliente hacia el validador, perfil por canal).</span></li>
+                <li class="mb-1"><strong>Identidad soberana del Proxy (TLS / mTLS)</strong> <span class="text-muted">(certificado de cliente mTLS hacia el validador cuando el canal lo exige, perfil por canal en DynamoDB).</span></li>
                 <li class="mb-0"><strong>Dashboard de Salud de Canales</strong> <span class="text-muted">(Observabilidad forense por fase de Conectividad Segura TLS y mTLS, CRL, HTTP y <code>PROXY_ERR_*</code>).</span></li>
               </ul>
               <p class="mb-0 small text-secondary">
@@ -78,8 +78,8 @@
         </div>
 
         <div class="alert alert-info border-start border-4 border-info wiki-mission-banner mb-4" role="status">
-          <p class="mb-2"><strong>Nuestra Misión:</strong> Garantizar la integridad y confidencialidad en el transporte de datos financieros, eliminando la deuda técnica de validaciones reactivas y estableciendo una identidad digital soberana mediante mTLS nativo y observabilidad forense.</p>
-          <p class="mb-0"><strong>Resiliencia de entrega:</strong> El Proxy incorpora un <strong>Sistema de Resiliencia</strong> gobernado por DynamoDB (políticas OPT-IN, cola SQS y worker dedicado). Es un diseño <em>nuevo y soberano</em> en este repositorio: la orquestación, el cliente HTTP y la configuración operativa se documentan en <a href="resilience-strategy.html">Estrategia y Capa 1</a>, <a href="async-worker.html">SQS y Capa 2</a> y <a href="resilience-config.html">Manual de configuración</a>. El contexto de negocio y auditoría legacy sigue en <a href="business-value.html#resiliencia-notificaciones">Valor y justificación — §4</a>.</p>
+          <p class="mb-2"><strong>Nuestra Misión:</strong> Garantizar la integridad y confidencialidad en el transporte de datos financieros, eliminando la deuda técnica de validaciones reactivas y estableciendo una identidad digital soberana mediante <strong>Conectividad Segura TLS / mTLS</strong> (autenticación mutua donde el canal lo exige) y observabilidad forense alineada a <strong>Validación de Confianza Cero (Zero Trust)</strong> en el perímetro hacia validadores.</p>
+          <p class="mb-0"><strong>Gestión de disponibilidad:</strong> El Proxy incorpora un <strong>Sistema de Resiliencia Opt-in</strong> (bajo demanda): gobernado por DynamoDB — nada es automático si no está definido en tabla — con políticas explícitas, cola SQS y worker cuando el despliegue lo habilite. La orquestación y la configuración operativa se documentan en <a href="resilience-strategy.html">Estrategia y Capa 1</a>, <a href="async-worker.html">SQS y Capa 2</a> y <a href="resilience-config.html">Manual de configuración</a>. Contexto de negocio y auditoría legacy: <a href="business-value.html#resiliencia-notificaciones">Valor y justificación — §4</a>.</p>
         </div>
 
         <p class="text-center mx-auto mb-4" style="max-width: 42rem;">
@@ -105,7 +105,7 @@
             <div class="card h-100 shadow-sm">
               <a class="card-body card-link p-3" href="connectivity-telered.html">
                 <div class="text-muted small mb-1">PKI y red</div>
-                <h3 class="card-title h5 mb-2">Seguridad &amp; mTLS</h3>
+                <h3 class="card-title h5 mb-2">Seguridad TLS / mTLS</h3>
                 <p class="small text-secondary mb-0">Perfiles de <strong>Conectividad Segura (TLS / mTLS)</strong> en DynamoDB, whitelist híbrida, certificado de cliente, CRL y Secrets Manager — referencia técnica.</p>
               </a>
             </div>
@@ -138,17 +138,13 @@
         <div class="wiki-mermaid-wrap shadow-sm mb-3 wiki-diagram-heart">
           <pre class="mermaid">sequenceDiagram
     autonumber
-    box LightBlue Orquestacion
     participant Inv as Invocacion
     participant Log as Logger
     participant Idn as IdentityManager
     participant Op as OperacionesPaquete
     participant Htt as httpsClient
     participant Tel as Telemetria_emit
-    end
-    box Honeydew Validador_remoto
     participant Rem as Endpoint_validador
-    end
 
     Inv->>Log: evento y contexto
     Log->>Tel: emit Logger meta
@@ -157,26 +153,24 @@
     Idn-->>Log: DTO canal inmutable
     Log->>Op: cerrarPaquete
     Op->>Tel: emit Crypto_App
-    Op->>Htt: body cifrado y perfil canal TLS mTLS
+    Op->>Htt: body cifrado perfil TLS_mTLS
     Htt->>Tel: emit Handshake CRL
-    alt Handshake CRL y revocacion OK
-      Note over Htt,Rem: Conectividad segura TLS y mTLS certificado cliente si aplica
+    alt Path_OK_TLS_CRL
+      Note over Htt,Rem: TLS y mTLS cert cliente si canal
       Htt->>Rem: POST body cifrado
       Rem-->>Htt: respuesta HTTP
       Htt->>Tel: emit HTTP_Response
       Htt-->>Op: bytes y status
-    else Fallo handshake CRL o revocacion
-      rect rgb(255, 160, 160)
-        Htt->>Htt: ABORTA sin body hacia validador
-        Htt->>Tel: emit error PROXY_ERR
-      end
+    else Path_FAIL_CRL
+      Htt->>Htt: ABORTA_sin_body_validador
+      Htt->>Tel: emit error PROXY_ERR
       Htt-->>Op: error controlado
     end
     Op-->>Log: abrir paquete o error
     Log-->>Inv: respuesta API</pre>
         </div>
         <p class="small mx-auto mb-5" style="max-width: 42rem;">
-          La Lambda actúa como <strong>director de orquesta</strong>: <code>IdentityManager</code> sustituye el legado de <code>canal.js</code> con lecturas <code>GetItem</code>/GSI y DTO congelado (nadie reescribe el <strong>pasaporte</strong> a mitad del control); <code>httpsClient</code> concentra el <strong>portero</strong> de <strong>Conectividad Segura (TLS / mTLS)</strong>, la CRL y el <strong>doble pasaporte</strong> mTLS: el validador prueba su identidad hacia nosotros y, cuando el perfil del canal lo exige, nosotros presentamos <strong>certificado de cliente</strong> hacia él. Entre ambos, <code>OperacionesPaquete</code> llena las <strong>cubetas</strong> de cifrado de aplicación antes de que un solo byte sensible cruce el cable hacia el validador.
+          La Lambda actúa como <strong>director de orquesta</strong>: <code>IdentityManager</code> sustituye el legado de <code>canal.js</code> con lecturas <code>GetItem</code>/GSI y DTO congelado (nadie reescribe el <strong>pasaporte</strong> a mitad del control); <code>httpsClient</code> concentra el <strong>portero</strong> de <strong>Conectividad Segura (TLS / mTLS)</strong>, la CRL y el <strong>doble pasaporte TLS / mTLS</strong>: el validador prueba su identidad hacia nosotros y, cuando el perfil del canal lo exige, nosotros presentamos <strong>certificado de cliente</strong> hacia él. Entre ambos, <code>OperacionesPaquete</code> llena las <strong>cubetas</strong> de cifrado de aplicación antes de que un solo byte sensible cruce el cable hacia el validador.
           El <strong>porqué estratégico</strong> del proyecto (auditoría, riesgos legacy, centralización de cifrado y telemetría) está concentrado en <a href="business-value.html">Valor y justificación</a>.
         </p>
 
@@ -196,7 +190,7 @@
         <h2 class="h4">Alcance</h2>
         <ul>
           <li>Orquestación: dos lecturas de canal (emisor / validador), cifrado hacia el <em>remote endpoint</em>, HTTP(s) con política unificada de <strong>Conectividad Segura (TLS / mTLS)</strong>.</li>
-          <li>Telemetría técnica en DynamoDB (tabla dedicada) para handshake, CRL, mTLS, HTTP y tiempos.</li>
+          <li>Telemetría técnica en DynamoDB (tabla dedicada) para handshake, CRL, capa TLS / mTLS, HTTP y tiempos.</li>
           <li>Compatibilidad de despliegue con el estándar SAM de los repos existentes (VPC, EFS, KMS MRK).</li>
         </ul>
 
@@ -207,7 +201,7 @@
             <li><strong>AWS SDK v3</strong> — clientes modulares (<code>@aws-sdk/client-dynamodb</code>, <code>@aws-sdk/lib-dynamodb</code>, <code>@aws-sdk/client-secrets-manager</code>, etc.)</li>
             <li><strong>DynamoDB</strong> — identidad de canal, operaciones, llaves referenciadas y telemetría forense</li>
             <li><strong>Amazon EFS</strong> — montaje de CA, CRL, certificados y claves de cliente para <strong>Conectividad Segura (TLS / mTLS)</strong></li>
-            <li><strong>AWS Secrets Manager</strong> — passphrase de clave privada mTLS (nunca en variables de entorno)</li>
+            <li><strong>AWS Secrets Manager</strong> — passphrase de clave privada para cliente TLS / mTLS (nunca en variables de entorno)</li>
           </ul>
         </div>
 

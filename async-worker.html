@@ -54,7 +54,8 @@
         </p>
         <h1 class="h2 mb-2">Sistema de Resiliencia — <strong>Capa 2</strong> (asíncrona: SQS y worker)</h1>
         <p class="lead text-muted mb-3">
-          Cuando el SLA del banco o los límites de API Gateway hacen imposible “esperar en silencio” toda la cascada de reintentos, el Proxy cambia de postura: acepta el trabajo, lo deposita en <strong>Amazon SQS</strong> y un <strong>Lambda Worker</strong> independiente completa la entrega con la misma disciplina de transporte que la Capa 1.
+          La <strong>Capa 2</strong> extiende la <strong>Resiliencia Opt-in</strong> al plano asíncrono: el modo cola + worker <em>tampoco es automático</em>; debe estar definido en el modelo de datos, en plantilla SAM y en la operación del canal antes de aceptar <code>202</code> y publicar en SQS.
+          Cuando así se habilita y el SLA del banco o los límites de API Gateway aconsejan desacoplar, el Proxy deposita el trabajo en <strong>Amazon SQS</strong> y un <strong>Lambda Worker</strong> independiente completa la <strong>gestión de disponibilidad</strong> con la misma disciplina de transporte TLS / mTLS que la Capa 1.
         </p>
 
         <nav class="wiki-inpage-toc small mb-4" aria-label="En esta página">

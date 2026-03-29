@@ -20,6 +20,7 @@
     "data-dictionary.html": "infra",
     "network.html": "infra",
     "deployment.html": "infra",
+    "infrastructure.html": "infra",
   };
 
   function basename(path) {
@@ -104,7 +105,7 @@
 
   function buildAccordion(suf) {
     var b1 =
-      linkMain("index.html", "🏠", "Introducción", "Visión y misión del proxy") +
+      linkMain("index.html", "🏠", "Introducción", "Visión, misión y Principios de Diseño Seguro") +
       linkMain(
         "flow.html",
         "📊",
@@ -121,7 +122,7 @@
       ) +
       linkSub("business-value.html#hallazgos-legacy", "Hallazgos legacy y riesgos") +
       linkSub("business-value.html#oportunidades-mejora", "Oportunidades de mejora") +
-      linkSub("resilience-strategy.html", "Sistema de Resiliencia (entrada)") +
+      linkSub("resilience-strategy.html", "Resiliencia Opt-in — entrada") +
       linkSub("business-value.html#monitoreo-salud", "Monitoreo y salud de canales");
 
     var bResiliencia =
@@ -129,13 +130,13 @@
         "resilience-strategy.html",
         "🛡️",
         "Estrategia y Capa 1",
-        "Reintentos OPT-IN, httpsClient, presupuesto temporal"
+        "Resiliencia Opt-in; resiliencia controlada en la invocación"
       ) +
       linkMain(
         "async-worker.html",
         "📬",
         "Arquitectura SQS y Capa 2",
-        "202 Accepted, worker, backoff sin Lambdas recursivas"
+        "Resiliencia Opt-in; gestión de disponibilidad asíncrona"
       ) +
       linkMain(
         "resilience-config.html",
@@ -149,7 +150,7 @@
         "crypto-transport.html#por-que-diferente",
         "🔒",
         "Túnel de Confianza",
-        "Conectividad segura TLS mTLS, CRL, módulos"
+        "TLS / mTLS; Zero Trust hacia validador; CRL"
       ) +
       linkMain(
         "connectivity-telered.html",
@@ -188,7 +189,8 @@
       linkSub("data-dictionary.html#matriz-errores", "Matriz de errores (PROXY_ERR_*)") +
       linkSub("data-dictionary.html#tabla-canal", "Modelo de datos de canal") +
       linkMain("network.html", "📋", "Red (samconfig)", "Parámetros de red y entorno") +
-      linkMain("deployment.html", "📄", "Despliegue (template)", "SAM / template.yaml");
+      linkMain("infrastructure.html", "🏗️", "Infraestructura SAM", "SQS, DLQ, IAM granular, EFS") +
+      linkMain("deployment.html", "📄", "Despliegue (template)", "SAM mínimo / referencia");
 
     return (
       '<div class="accordion wiki-sidebar-accordion" id="wikiNavAccordion' +
@@ -208,7 +210,7 @@
         "3",
         "resiliencia",
         "Sistema de Resiliencia",
-        "100 % datos: OPT-IN, SQS, manual DynamoDB",
+        "Resiliencia Opt-in (bajo demanda); SQS; manual DynamoDB",
         bResiliencia
       ) +
       accordionItem(
@@ -216,7 +218,7 @@
         "4",
         "seguridad",
         "Seguridad y transporte",
-        "Conectividad segura TLS mTLS, PKI, cifrado app",
+        "Seguridad defensiva; TLS / mTLS; PKI; cifrado de aplicación",
         b2
       ) +
       accordionItem(

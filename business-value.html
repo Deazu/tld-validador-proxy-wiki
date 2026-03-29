@@ -261,7 +261,7 @@
         <section id="resiliencia-notificaciones" class="mt-5">
           <h2 class="h3 border-0 pb-0">4. Resiliencia: contexto de negocio, auditoría y buffer en el Proxy</h2>
           <div class="alert alert-secondary border-start border-4 small mb-4" role="note">
-            <strong>Arquitectura técnica del Sistema de Resiliencia</strong> (OPT-IN en DynamoDB, <code>httpsClient</code>, presupuesto Lambda, SQS y worker): trilogía dedicada —
+            <strong>Arquitectura técnica del Sistema de Resiliencia</strong> (<strong>Resiliencia Opt-in</strong> en DynamoDB, <code>httpsClient</code>, presupuesto Lambda, SQS y worker): trilogía dedicada —
             <a href="resilience-strategy.html">Estrategia y Capa 1</a>,
             <a href="async-worker.html">SQS y Capa 2</a>,
             <a href="resilience-config.html">Manual de configuración</a>.
@@ -359,7 +359,7 @@
             Opcionalmente, un <code>fallbackEndpoint</code> en el ítem de canal (ver <a href="data-dictionary.html#tabla-canal">diccionario <code>tld-validador-canal</code></a>) define un destino alternativo <em>después</em> de agotar la política principal, manteniendo la decisión en datos versionables y no en código comentado.
           </p>
           <p class="small text-muted mb-0">
-            Capa 1 (OPT-IN, presupuesto Lambda): <a href="resilience-strategy.html">Estrategia síncrona</a> ·
+            Capa 1 (Resiliencia Opt-in, presupuesto Lambda): <a href="resilience-strategy.html">Estrategia síncrona</a> ·
             diagrama en <a href="flow.html#diagrama-secuencia-reintentos">Flujo General — reintentos</a> ·
             Capa 2: <a href="async-worker.html">SQS y 202</a> ·
             <a href="flow.html#diagrama-notificacion-asincrona">Flujo General — modo asíncrono</a>.
@@ -367,7 +367,7 @@
 
           <h3 class="h5 mt-4" id="estrategia-sync-async-fire-forget">4.5. Notas de producto: síncrono vs asíncrono y “Fire &amp; Forget”</h3>
           <p>
-            Los campos <code>retryPolicyActive</code> y <code>maxRetryAttempts</code> en <strong><code>tld-validador-canal-operacion</code></strong> gobiernan el OPT-IN por operación; el JSON <code>retryPolicy</code> en <code>tld-validador-canal</code> aporta backoff y catálogo de códigos reintentables.
+            Los campos <code>retryPolicyActive</code> y <code>maxRetryAttempts</code> en <strong><code>tld-validador-canal-operacion</code></strong> gobiernan la <strong>Resiliencia Opt-in</strong> por operación; el JSON <code>retryPolicy</code> en <code>tld-validador-canal</code> aporta backoff y catálogo de códigos reintentables.
             Guía operativa y ejemplos <code>0010</code>/<code>0020</code>: <a href="resilience-config.html">Manual de configuración DynamoDB</a>.
             Regla de fusión recomendada: <strong>operación manda cuando está definida</strong>; si <code>retryPolicyActive</code> es <code>false</code>, un solo intento hacia el downstream salvo reglas mínimas de producto.
           </p>

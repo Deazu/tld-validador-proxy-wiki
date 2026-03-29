@@ -55,7 +55,7 @@
         </p>
         <h1 class="h2 mb-2">Manual de configuración — Resiliencia en <strong>DynamoDB</strong></h1>
         <p class="lead text-muted mb-3">
-          Guía práctica para <strong>Operaciones</strong> e ingeniería de plataforma: activar o desactivar reintentos por operación, dimensionar intentos frente al SLA del banco y publicar cambios con trazabilidad.
+          Guía práctica para <strong>Operaciones</strong> e ingeniería de plataforma bajo una estrategia de <strong>Resiliencia Opt-in</strong>: cada cambio en tabla es una decisión explícita de <strong>resiliencia controlada</strong> y <strong>gestión de disponibilidad</strong> — sin atributos válidos en DynamoDB no hay máquina de reintentos ni modo asíncrono.
           Los nombres de atributo siguen el <a href="data-dictionary.html">Diccionario de Datos</a>; los ejemplos son ilustrativos hasta que el parser definitivo quede fijado en código.
         </p>
 
@@ -87,7 +87,7 @@
             </li>
           </ol>
           <div class="alert alert-warning small mb-0" role="note">
-            <strong>OPT-IN:</strong> Si el atributo falta o es <code>false</code>, asume que <strong>no</strong> hay máquina de reintentos para esa operación, salvo lógica mínima de producto documentada aparte.
+            <strong>Resiliencia Opt-in:</strong> Si el atributo falta o es <code>false</code>, asume que <strong>no</strong> hay máquina de reintentos para esa operación — nada automático — salvo lógica mínima de producto documentada aparte.
           </div>
         </section>
 
