@@ -157,10 +157,18 @@
     Op->>Tel: emit Crypto_App
     Op->>+Htt: body cifrado + perfil TLS
     Htt->>Tel: emit Handshake CRL
-    Htt->>Rem: HTTPS CRL antes del body
-    Rem-->>Htt: respuesta HTTP
-    Htt->>Tel: emit HTTP_Response
-    Htt-->>-Op: bytes / status
+    alt TLS CRL y revocacion OK
+      Htt->>Rem: POST body cifrado
+      Rem-->>Htt: respuesta HTTP
+      Htt->>Tel: emit HTTP_Response
+      Htt-->>-Op: bytes / status
+    else falla handshake CRL o revocacion
+      rect rgb(255, 160, 160)
+      Htt->>Htt: ABORTA sin enviar body al validador
+      Htt->>Tel: emit error PROXY_ERR
+      end
+      Htt-->>-Op: error controlado
+    end
     Op-->>-Log: abrir paquete / error
     Log-->>-Inv: respuesta API</pre>
         </div>
@@ -183,6 +191,10 @@
             El proxy registra el <strong>punto exacto de fallo</strong> en la cadena de confianza y transporte — resolución de nombres y ruta hacia el host (<abbr title="Domain Name System">DNS</abbr> / conectividad), negociación <strong>TLS</strong>, validación de <strong>CRL</strong>, <strong>mTLS</strong> (certificado o clave de cliente, passphrase, rechazo del peer) y <strong>timeouts</strong> de socket o lectura HTTP.
             Esa granularidad permite a <strong>operaciones</strong> acotar en minutos si el incidente es PKI, red, el validador remoto o la propia Lambda, en lugar de reuniones adivinando qué capa falló.
             El marco del <strong>portero</strong> (TLS + CRL antes del cuerpo) y el <strong>doble pasaporte</strong> (mTLS) sigue siendo la narrativa; la telemetría es la lectura objetiva de qué tramo del pasillo quedó cerrado.
+          </p>
+          <p>
+            Al concentrar todas las salidas hacia validadores en un solo componente, la telemetría alimenta un <strong>dashboard de salud de canales</strong> coherente: puedes alertar cuando sube la tasa de <code>CRL_Check</code> fallidos, caducidades próximas de certificados de cliente o rechazos de cadena <strong>antes</strong> de que el negocio perciba “timeouts raros” o errores opacos en microservicios satélite.
+            En el modelo disperso, cada Lambda podía estar en silo; aquí el mismo <code>correlationId</code> cruza identidad, cifrado de aplicación y transporte, de modo que un problema de <strong>certificado o revocación</strong> aparece como señal temprana en el panel, no solo como síntoma aguas abajo.
           </p>
           <p class="small text-muted mb-0">
             Contrato de esquema, TTL y matriz de códigos: <a href="data-dictionary.html#tabla-telemetry">Diccionario de Datos — telemetría</a> ·
@@ -214,6 +226,10 @@
           <code>algoritmoCifrado</code> desde DynamoDB y llama siempre a <code>cerrarPaquete</code> / <code>abrirPaquete</code> con la firma completa.
           Así se elimina la clase de bugs por “llamadas incompletas” en cada repositorio.
         </div>
+        <p>
+          Centralizar el cifrado de aplicación en el proxy reduce la <strong>superficie de ataque</strong> y el <strong>error humano</strong>: no hace falta que cada microservicio monte políticas IAM para <strong>KMS</strong>, rutas a llaves públicas en EFS, ni ramas propias de <strong>AES-GCM / AES-CBC</strong> y manejo de nonces o IV.
+          Quien despliega un satélite ya no repite el riesgo de olvidar un parámetro, rotar mal una clave o exponer convenciones distintas entre equipos; el contrato vive en DynamoDB y en un único módulo de orquestación probado en staging.
+        </p>
 
         <h2 class="h4">Contrato de entrada (ejemplo)</h2>
         <p>Evento orientativo para invocación al proxy (sin enviar <code>modo</code>):</p>
