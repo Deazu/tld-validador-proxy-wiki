@@ -141,6 +141,24 @@
                 <td>String</td>
                 <td>URL HTTPS base o por defecto del validador para este canal. Ejemplo: <code>https://validador.interno/api/v1/validar</code>. Las operaciones pueden sobreescribir con <code>urlOperacion</code> en la tabla de operaciones.</td>
               </tr>
+              <tr>
+                <td><code>retryPolicy</code></td>
+                <td>String (JSON) o Map</td>
+                <td>
+                  <strong>Política de reintentos del Proxy</strong> hacia el downstream del canal (p. ej. <code>cuenta-nombre</code> / validador). Documentación lógica; el equipo fija el parser en código.
+                  Ejemplo de payload JSON serializado: <code>{"maxRetries":4,"baseDelayMs":250,"maxDelayMs":8000,"jitterRatio":0.2,"retryableHttpStatuses":[408,429,502,503,504]}</code>.
+                  Campos típicos: <code>maxRetries</code>, <code>baseDelayMs</code>, <code>maxDelayMs</code>, <code>jitterRatio</code> o <code>jitterMaxMs</code>, <code>retryableHttpStatuses</code>, opcional <code>retryOnNetworkError</code> (boolean).
+                  Alineado con la estrategia de <strong>exponential backoff</strong> descrita en <a href="business-value.html#resiliencia-notificaciones">Valor y justificación — resiliencia</a>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>fallbackEndpoint</code></td>
+                <td>String (URL HTTPS)</td>
+                <td>
+                  Destino <strong>opcional</strong> invocado solo tras agotar <code>retryPolicy</code> contra <code>urlValidador</code> / URL de operación, cuando el equipo define un plan B (p. ej. cola o servicio de notificación alternativo) sin reintroducir la lógica ad hoc en Lambdas satélite.
+                  Debe ser HTTPS, validado por la misma matriz de URL que el resto del canal; si está vacío u omitido, el Proxy termina la invocación con error mapeado <code>PROXY_ERR_*</code> sin segundo salto automático.
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -235,6 +253,7 @@
         <p class="small">
           <strong>Rol:</strong> autorización fina: qué códigos de método de negocio (<code>metodo</code> en el evento) están permitidos para un <code>idCanal</code> y, opcionalmente, URL específica por operación.
           El proxy debe rechazar métodos no declarados antes de abrir TLS o cifrar payload.
+          Puede además declarar si la operación participa en la <strong>política de reintentos</strong> del Proxy (<code>retryPolicyActive</code>, <code>maxRetryAttempts</code>) y, en diseños futuros, modo de respuesta síncrona vs <code>202</code> — ver <a href="business-value.html#estrategia-sync-async-fire-forget">Valor y justificación — §4.5</a>.
         </p>
         <div class="table-responsive">
           <table class="table table-sm table-bordered align-middle">
@@ -260,6 +279,23 @@
                 <td><code>urlOperacion</code></td>
                 <td>String</td>
                 <td>Opcional. Si viene informada, sustituye o extiende la URL usada solo para esa operación. Ejemplo: <code>https://validador.interno/v2/validar-masivo</code>. Si vacío, se usa <code>urlValidador</code> del canal.</td>
+              </tr>
+              <tr>
+                <td><code>retryPolicyActive</code></td>
+                <td>Boolean</td>
+                <td>
+                  Si <code>true</code>, el Proxy aplica la política de reintentos hacia el downstream para esta <code>operacion</code> (en conjunto con <code>maxRetryAttempts</code> y el JSON <code>retryPolicy</code> del canal o futuro override por fila).
+                  Si <code>false</code> u omitido, comportamiento conservador: un único intento salvo reglas mínimas de red definidas por producto. Útil para distinguir notificaciones <code>0010</code>/<code>0020</code> de consultas idempotentes o de solo lectura.
+                  Ver <a href="business-value.html#estrategia-sync-async-fire-forget">Valor y justificación — §4.5</a>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>maxRetryAttempts</code></td>
+                <td>Number</td>
+                <td>
+                  Tope de <strong>reintentos</strong> después del intento inicial (p. ej. <code>3</code> ⇒ hasta 4 contactos HTTP si todos son fallos reintentables). Debe acotarse al tiempo máximo de la Lambda o, en modo asíncrono, al presupuesto del worker/SQS.
+                  Si falta y <code>retryPolicyActive</code> es <code>true</code>, el implementador puede heredar <code>maxRetries</code> del documento <code>retryPolicy</code> en <code>tld-validador-canal</code>.
+                </td>
               </tr>
               <tr>
                 <td><code>idCanalValidador</code> / metadatos</td>

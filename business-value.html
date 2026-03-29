@@ -68,7 +68,10 @@
             <li><a href="#diagrama-proxy-aborto">Diagrama: aborto antes del body (proxy)</a></li>
             <li><a href="#pares-valor">Pares de valor (portero y doble pasaporte)</a></li>
             <li><a href="#centralizar-cifrado">Centralización del cifrado de aplicación</a></li>
-            <li><a href="#monitoreo-salud">3. Monitoreo y salud de canales</a></li>
+            <li><a href="#resiliencia-notificaciones">4. Resiliencia: notificaciones y reintentos</a></li>
+            <li><a href="#inventario-consumidores-notificacion">4.2. Consumidores de <code>tld-notificacion</code> en el workspace</a></li>
+            <li><a href="#estrategia-sync-async-fire-forget">4.5. Reintentos por operación, modo 202 y cola</a></li>
+            <li><a href="#monitoreo-salud">5. Monitoreo y salud de canales</a></li>
           </ul>
         </nav>
 
@@ -254,8 +257,129 @@
           </p>
         </section>
 
+        <section id="resiliencia-notificaciones" class="mt-5">
+          <h2 class="h3 border-0 pb-0">4. Resiliencia: notificaciones, punto único de fallo y buffer en el Proxy</h2>
+          <h3 class="h5 mt-4">4.1. Auditoría del camino legacy (<code>inactividad</code> → <code>cuenta-nombre</code> → <code>tld-notificacion</code>)</h3>
+          <p>
+            En <code>tld-api-alias/lambdas/inactividad/lib/notificar.js</code>, el flujo de <strong>notificación bancaria por inactividad</strong> arma una petición cifrada con <code>operacionesPaquete.cerrarPaquete</code> y la envía por HTTP al endpoint configurado en <code>END_POINT_API_VALIDADOR</code> (por defecto la API <strong><code>cuenta-nombre</code></strong>).
+            El módulo <code>requestPost</code> usa un único <code>axios.post</code> sin política de reintentos ni clasificación de fallos: ante error de red o 5xx, devuelve un objeto <code>{ error: true, code: 500, message }</code> y el llamador debe inferir qué hacer.
+          </p>
+          <p>
+            En código comentado (p. ej. referencia <code>CCL-6805</code>) aparece el patrón de <strong>delegación a otro servicio</strong>: si la respuesta de <code>cuenta-nombre</code> trae <code>codigoError</code> o el descifrado indica fallo de negocio, la intención era reenviar el trabajo a <code>URL_NOTIFICAR</code> — típicamente el API Gateway que expone <strong><code>tld-notificacion</code></strong> — con un cuerpo distinto (<code>inmediato: "no"</code>, metadatos de sistema).
+            Ese diseño fragmenta la responsabilidad: la decisión de “¿reintento, cola o error?” queda repartida entre <strong>dos Lambdas</strong> (<code>inactividad</code> y <code>notificacion</code>) con contratos HTTP distintos y sin una máquina de estados única auditable.
+          </p>
+          <p>
+            Si <code>tld-notificacion</code> hereda una lógica de reintentos <strong>endeble o opaca</strong> (timeouts agresivos, ausencia de backoff, idempotencia dudosa o manejo inconsistente de 429/503), el sistema entero hereda esa fragilidad: una ventana de indisponibilidad de <code>cuenta-nombre</code> o del validador remoto puede traducirse en <strong>pérdida aparente de la notificación crítica</strong> o en estados “zombie” que el negocio descubre horas después.
+          </p>
+          <div class="wiki-callout-beginner">
+            <div class="wiki-callout-title">Analogía — seguro de vida de la transacción</div>
+            <p class="small mb-0">
+              El <strong>portero</strong> y el <strong>doble pasaporte</strong> siguen protegiendo el túnel; la capa de notificaciones es el momento en que el banco debe enterarse de un evento regulatorio.
+              Confiar esa entrega a una cadena de servicios sin un <strong>seguro de vida</strong> común — una sola póliza con cláusulas claras de reintento, límite y trazabilidad — es asumir que ningún eslabón se caerá en el peor minuto del día.
+            </p>
+          </div>
+
+          <h3 class="h5 mt-4" id="inventario-consumidores-notificacion">4.2. Inventario de consumidores de <code>tld-notificacion</code> (auditoría de workspace)</h3>
+          <p class="small text-muted">
+            Búsqueda en repositorios bajo el workspace por invocaciones a la API <code>POST …/enviar</code> vía variable <code>URL_NOTIFICAR</code> (parámetro SAM <code>ApiNotificacion</code>, típicamente API Gateway del stack <code>tld-notificacion</code>). No se listan aquí los consumidores internos del propio repo <code>tld-notificacion</code> (p. ej. <code>enviar.lambdaHandler</code> que encola en SQS).
+          </p>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col">Repositorio</th>
+                  <th scope="col">Lambda / módulo</th>
+                  <th scope="col">Método / operación hacia validador</th>
+                  <th scope="col">Patrón hacia <code>tld-notificacion</code></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>tld-api-alias</code></td>
+                  <td><code>alias</code> — <code>lambdas/alias/lib/notificar.js</code> (<code>sendNotificationBank</code>, usado desde <code>app.js</code> p. ej. baja / notificación al banco)</td>
+                  <td><strong><code>0010</code></strong> (<code>VALIDADOR_METHOD</code>), payload con <code>tipoNotificacion</code> según caso (p. ej. baja por solicitud <code>04</code>)</td>
+                  <td><strong>Fallback</strong> tras POST directo a <code>END_POINT_API_VALIDADOR</code> (<code>cuenta-nombre</code>): si <code>respuesta.error</code>, <code>codigoError</code> en cuerpo, o descifrado con <code>resultado !== 0</code>, entonces <code>axiosRequest("post", URL_NOTIFICAR, servicioDeNotificacion)</code> con cuerpo genérico de cola (<code>url</code>, <code>metodo</code>, <code>contenido</code>, <code>idSistema</code>, <code>inmediato: "no"</code>).</td>
+                </tr>
+                <tr>
+                  <td><code>tld-api-alias</code></td>
+                  <td><code>inactividad</code> — <code>lambdas/inactividad/lib/notificar.js</code></td>
+                  <td><strong><code>0010</code></strong> (inactividad / baja por vencimiento según <code>tipoNotificacion</code>)</td>
+                  <td><strong>Fallback hoy desactivado:</strong> el mismo patrón <code>URL_NOTIFICAR</code> existe solo en bloque <strong>comentado</strong> (referencia <code>CCL-6805</code>); la Lambda solo hace POST síncrono a <code>cuenta-nombre</code>. Re-habilitar sin Proxy mantendría el riesgo de fragmentación.</td>
+                </tr>
+                <tr>
+                  <td><code>tld-api-p2m</code></td>
+                  <td><code>p2m</code> — <code>lambdas/p2m/lib/notificar.js</code></td>
+                  <td><strong><code>0020</code></strong> (<code>VALIDADOR_METHOD</code>), URL desde <code>operaciones</code> del canal o <code>urlValidador</code></td>
+                  <td><strong>Fallback</strong> si <code>statusCode == 500</code>, <code>codigoError</code> o descifrado con <code>resultado !== 0</code>: <code>axiosRequest("post", URL_NOTIFICAR, …)</code> con <code>idSistema</code> típico <code>P2M</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>tld-api-p2m-intento_refactory</code></td>
+                  <td><code>p2m</code> — <code>lambdas/p2m/src/services/notification.service.js</code></td>
+                  <td><strong><code>0020</code></strong> (<code>METODO_NOTIFICACION_VALIDADOR</code>)</td>
+                  <td><strong>Fallback</strong> equivalente vía <code>notificacionAxiosRequest("post", resolveUrlNotificar(), servicioDeNotificacion)</code>; además incluye <strong>reintento de auth</strong> al validador (401/403 / <code>codigoExp</code>) antes de decidir fallback a cola — otra capa de lógica ajena al Proxy.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Ningún hallazgo en el workspace muestra una llamada <strong>directa</strong> a <code>URL_NOTIFICAR</code> como primer paso: en todos los casos el diseño es <strong>intento directo al validador / cuenta-nombre</strong> y delegación a <code>tld-notificacion</code> solo como <strong>plan B</strong>.
+            Otros repos (<code>tld-api-r2p</code>, etc.) mencionan notificaciones en comentarios o validaciones de configuración, sin <code>URL_NOTIFICAR</code> cableada en el código analizado.
+          </p>
+          <p>
+            <strong>Lambdas y dominios que se benefician de centralizar reintentos en <code>tld-validador-proxy</code>:</strong> flujos de <code>tld-api-alias</code> (<strong>alias</strong> y <strong>inactividad</strong> cuando migren el POST hacia el Proxy en lugar de axios directo) y flujos de <strong>P2M</strong> (rama principal y la de refactor) que hoy duplican política de error y depósito en cola.
+            El objetivo es que el originador emita <strong>un contrato</strong> hacia el Proxy; el Proxy absorbe transitorios, telemetría y límites, y reduce la necesidad de que cada repo conozca el contrato HTTP de <code>/enviar</code>.
+          </p>
+
+          <h3 class="h5 mt-4">4.3. Riesgo operativo: reintentos fragmentados</h3>
+          <p>
+            Cuando la política de resiliencia no está <strong>centralizada</strong>, cada capa interpreta el fallo a su manera: <code>inactividad</code> puede devolver 500 genérico; <code>notificacion</code> puede reintentar con reglas distintas o no reintentar; el observador en CloudWatch ve correlaciones rotas.
+            Esa <strong>fragmentación</strong> produce: (1) <em>duplicación o omisión</em> de llamadas si dos componentes creen ser responsables del retry; (2) <em>latencia impredecible</em> si el segundo servicio encola sin límites; (3) <em>auditoría deficiente</em> porque no hay un <code>correlationId</code> único atravesando política de backoff, HTTP downstream y respuesta al originador.
+            En términos de confiabilidad, es un <strong>punto único de fallo lógico</strong>: no hay un dueño claro del contrato “hasta que la notificación crítica quede aceptada o documentada como fallida tras N intentos”.
+          </p>
+
+          <h3 class="h5 mt-4">4.4. Solución: <code>tld-validador-proxy</code> como buffer y dueño de la <em>retry strategy</em></h3>
+          <p>
+            La Lambda <code>tld-validador-proxy</code> asume la responsabilidad de la <strong>estrategia de reintentos</strong> para los flujos que hoy atraviesan <code>cuenta-nombre</code> / validador remoto en nombre de servicios como <code>inactividad</code>: el originador envía un evento estable; el Proxy resuelve canal, cifra, abre <strong>Conectividad Segura (TLS / mTLS)</strong> y habla con el downstream.
+            Los fallos <strong>transitorios</strong> (timeouts, 502/503/504, resets de conexión, rate limiting explícito) se absorben <em>dentro</em> del Proxy antes de devolver error al cliente interno.
+          </p>
+          <p>
+            La implementación prevista es un <strong>exponential backoff</strong> nativo en el orquestador (o en el módulo de transporte acoplado a telemetría): tras cada intento fallido reintentable, el intervalo de espera crece de forma exponencial (p. ej. <code>baseDelayMs * 2^attempt</code>) con <strong>jitter</strong> aleatorio acotado para evitar tormentas de sincronización cuando varias Lambdas despiertan a la vez.
+            Límites declarados en datos (<code>maxRetries</code>, <code>maxDelayMs</code>, lista de códigos HTTP “reintentables”) evitan que una invocación se cuelgue más allá del presupuesto de la función y dejan constancia en <code>tld-validador-proxy-telemetry</code> de cada ciclo <code>HTTP_Retry</code> o fase equivalente.
+          </p>
+          <p>
+            Solo cuando se agotan los reintentos o el error es <strong>no reintentable</strong> (4xx de contrato, CRL revocada, error de cifrado) el Proxy devuelve al originador (<code>inactividad</code> u otro) un <strong>error HTTP y código interno</strong> alineado a la matriz <code>PROXY_ERR_*</code>, en lugar de obligar al satélite a adivinar si debe llamar a <code>tld-notificacion</code>.
+            Opcionalmente, un <code>fallbackEndpoint</code> en el ítem de canal (ver <a href="data-dictionary.html#tabla-canal">diccionario <code>tld-validador-canal</code></a>) define un destino alternativo <em>después</em> de agotar la política principal, manteniendo la decisión en datos versionables y no en código comentado.
+          </p>
+          <p class="small text-muted mb-0">
+            Secuencia con fallo y reintentos (síncrono al originador): <a href="flow.html#diagrama-secuencia-reintentos">Flujo General — reintentos</a> ·
+            Notificación asíncrona con <code>202</code>: <a href="flow.html#diagrama-notificacion-asincrona">Flujo General — modo asíncrono</a>.
+          </p>
+
+          <h3 class="h5 mt-4" id="estrategia-sync-async-fire-forget">4.5. Estrategia de reintentos por operación (síncrona vs asíncrona) y “Fire &amp; Forget”</h3>
+          <p>
+            Los campos <code>retryPolicyActive</code> (Boolean) y <code>maxRetryAttempts</code> (Number) en <strong><code>tld-validador-canal-operacion</code></strong> son <strong>viables</strong> y alineados con el modelo ya descrito a nivel canal (<code>retryPolicy</code> JSON en <code>tld-validador-canal</code>): permiten que operaciones sensibles — p. ej. <code>0010</code> o <code>0020</code> — activen o sobrescriban límites sin mezclar políticas de consultas de lectura que no deben reintentarse agresivamente.
+            Regla de fusión recomendada para implementación: <strong>operación manda cuando está definida</strong>; si <code>retryPolicyActive</code> es <code>false</code>, un solo intento hacia el downstream salvo errores de red configurados como no reintentables; si es <code>true</code>, usar <code>maxRetryAttempts</code> junto con el documento JSON del canal (o un subdocumento por operación futuro) para backoff y jitter.
+          </p>
+          <p>
+            <strong>Modo síncrono (actual mental del handler):</strong> el cliente espera hasta que el Proxy termina intentos y devuelve 200/4xx/5xx — adecuado cuando el originador necesita resultado inmediato para su propia máquina de estados, pero puede provocar <strong>timeouts en API Gateway</strong> o en la Lambda llamadora si el backoff suma decenas de segundos.
+          </p>
+          <p>
+            <strong>Modo “Fire &amp; Forget” (asíncrono):</strong> el Proxy responde de inmediato <strong>HTTP 202 Accepted</strong> con un <code>requestId</code> / <code>correlationId</code> estable; el trabajo continúa en un <strong>worker</strong> (segunda invocación Lambda, <strong>SQS</strong> + consumidor, o Step Functions) que ejecuta envíos, backoff y registro en telemetría/historial.
+            Ventajas: el cliente (<code>inactividad</code>, <code>alias</code>, <code>p2m</code>) no queda bloqueado; la cola proporciona <strong>presión lateral</strong> ante picos y permite DLQ para análisis. Costes: idempotencia obligatoria en el destino o claves de deduplicación; contrato explícito de “aceptado ≠ entregado”; el originador debe consultar estado por API o confiar en webhooks si se añaden más adelante.
+          </p>
+          <div class="wiki-callout-beginner">
+            <div class="wiki-callout-title">Resiliencia inteligente</div>
+            <p class="small mb-0">
+              El Proxy deja de ser solo <strong>portero</strong> del túnel: se convierte en el <strong>gestor de la póliza</strong> — decide cuándo insistir, cuándo parar y cuándo dejar constancia forense, sin repartir esa responsabilidad entre <code>inactividad</code>, <code>p2m</code> y <code>tld-notificacion</code> con reglas distintas.
+            </p>
+          </div>
+          <p class="small text-muted mb-0">
+            Atributos de operación: <a href="data-dictionary.html#tabla-operacion"><code>tld-validador-canal-operacion</code></a>.
+          </p>
+        </section>
+
         <section id="monitoreo-salud" class="mt-5 mb-4">
-          <h2 class="h3 border-0 pb-0">3. Monitoreo y salud de canales</h2>
+          <h2 class="h3 border-0 pb-0">5. Monitoreo y salud de canales</h2>
           <p class="small text-secondary mb-3">
             Justificación técnica de la nueva Lambda: la tabla <code>tld-validador-proxy-telemetry</code> es la <strong>fuente de verdad operativa</strong> para saber si un canal validador está “verde” más allá del HTTP 200 que ve el llamador.
           </p>

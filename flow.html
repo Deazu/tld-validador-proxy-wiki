@@ -51,6 +51,8 @@
           <div class="fw-semibold mb-2">En esta página</div>
           <ul class="mb-0">
             <li><a href="#diagrama-secuencia">Diagrama de secuencia</a></li>
+            <li><a href="#diagrama-secuencia-reintentos">Fallo en notificación y reintentos en el Proxy</a></li>
+            <li><a href="#diagrama-notificacion-asincrona">Notificación asíncrona 202 y backoff</a></li>
             <li><a href="#orquestador-app">Lógica del orquestador (<code>app.js</code>)</a></li>
             <li><a href="#paso-a-paso">Explicación por fase</a></li>
             <li><a href="#estrategia-validacion">Validación en AWS (consola, sin mocks)</a></li>
@@ -98,6 +100,71 @@
     Http-->>-Handler: status y body
     Handler-->>-Client: respuesta HTTP API</pre>
           </div>
+          <h3 class="h5 mt-4" id="diagrama-secuencia-reintentos">Escenario: fallo transitorio en el downstream y política de reintentos</h3>
+          <p class="small text-muted">
+            Cuando el originador es p. ej. la Lambda <code>inactividad</code>, el Proxy actúa como <strong>buffer de resiliencia</strong>: detecta errores reintentables del servicio de notificación / validador (<code>cuenta-nombre</code> o remoto), aplica <strong>exponential backoff</strong> con límites declarados en <code>retryPolicy</code> del canal (<a href="data-dictionary.html#tabla-canal">diccionario</a>) y solo entonces devuelve error definitivo al llamador.
+            Así se evita delegar en cadena a <code>tld-notificacion</code> con reglas opacas. Participantes sin espacios en el id para un render Mermaid estable.
+          </p>
+          <div class="wiki-mermaid-wrap shadow-sm">
+            <pre class="mermaid">sequenceDiagram
+    autonumber
+    participant Orig as Inactividad_lambda
+    participant Handler as Proxy_Handler
+    participant Canal as Canal_DynamoDB
+    participant Http as HttpClient
+    participant Target as Validador_downstream
+
+    Orig->>Handler: POST idCanal metodo dataPlana
+    Handler->>Canal: GetItem canalDto
+    Canal-->>Handler: urlValidador y retryPolicy JSON
+    Note over Handler: cifrado app y TLS omitidos aqui por brevedad
+    Handler->>Http: requestSecure intento 1
+    Http->>Target: HTTPS POST notificacion
+    Target-->>Http: 503 o timeout
+    Http-->>Handler: fallo reintentable
+    Note over Handler: backoff exponencial jitter segun retryPolicy
+    Handler->>Http: requestSecure intento 2
+    Http->>Target: HTTPS POST notificacion
+    alt Reintento exitoso
+        Target-->>Http: 200 OK
+        Http-->>Handler: body respuesta
+        Handler-->>Orig: 200 API sin error definitivo
+    else Agotados maxRetries
+        Http-->>Handler: ultimo fallo
+        Handler-->>Orig: error HTTP y PROXY_ERR mapeado
+    end</pre>
+          </div>
+          <p class="small text-muted mb-0">
+            Justificación de negocio y riesgo del patrón legacy: <a href="business-value.html#resiliencia-notificaciones">Valor y justificación — §4 Resiliencia</a>.
+          </p>
+
+          <h3 class="h5 mt-4" id="diagrama-notificacion-asincrona">Notificación asíncrona: 202 Accepted, cola interna y backoff hacia el banco</h3>
+          <p class="small text-muted">
+            Variante de <strong>resiliencia inteligente</strong> para operaciones de notificación: el Proxy <strong>libera al cliente</strong> al aceptar el trabajo y asume reintentos sin mantener abierta la invocación del originador (<code>inactividad</code>, <code>alias</code>, <code>p2m</code>).
+            El recuadro lógico “Cola” representa SQS, Step Functions o un dispatcher interno; el diagrama simplifica a un único flujo de worker.
+          </p>
+          <div class="wiki-mermaid-wrap shadow-sm">
+            <pre class="mermaid">sequenceDiagram
+    autonumber
+    participant Cli as Cliente_interno
+    participant Prox as Proxy_Lambda
+    participant Cola as Cola_SQS_o_worker
+    participant Ban as Banco_validador
+
+    Cli->>Prox: Enviar notificacion metodo payload
+    Prox-->>Cli: 202 Accepted correlationId
+    Prox->>Cola: encolar trabajo idempotente
+    Cola->>Prox: disparar procesamiento
+    Prox->>Ban: intento 1 HTTPS notificacion
+    Ban-->>Prox: fallo transitorio
+    Prox->>Prox: espera exponential backoff
+    Prox->>Ban: intento 2 HTTPS notificacion
+    Ban-->>Prox: 200 OK exito
+    Note over Prox: telemetria por intento sin bloquear al Cli</pre>
+          </div>
+          <p class="small text-muted mb-0">
+            Diseño y trade-offs (síncrono vs 202, <code>retryPolicyActive</code>): <a href="business-value.html#estrategia-sync-async-fire-forget">Valor y justificación — §4.5</a>.
+          </p>
         </section>
 
         <section id="orquestador-app" class="mt-5">
@@ -139,24 +206,42 @@
      telemetry.emit({ correlationId, phase: 'Crypto_App', outcome: 'FAIL', detail: { internalCode: 'PROXY_ERR_ENC_001' } })
      RETORNAR 500
 
-  // 4) Transporte — httpsClient.requestSecure con perfil TLS del canalDto
+  // 4) Transporte — httpsClient.requestSecure + política de reintentos (retryPolicy en canalDto)
   urlDestino ← resolver URL desde canalDto + operación (urlOperacion o urlValidador)
-  TRY:
-     telemetry.emit({ correlationId, phase: 'Handshake_Start', outcome: 'OK' })
-     httpResult ← await httpsClient.requestSecure({
-       url: urlDestino,
-       method: 'POST',
-       headers: headersDesdeCanal,
-       body: payloadCifrado,
-       tlsOptions: derivarDesde(canalDto)   // CA, mTLS, SNI, CRL antes del body
-     })
-     telemetry.emit({ correlationId, phase: 'HTTP_Response', outcome: 'OK', durationMs: ... })
-  CATCH TlsHandshakeError:
-     RETORNAR mapear PROXY_ERR_TLS_001 → 502
-  CATCH CERT_REVOKED / CrlCheckError:
-     RETORNAR mapear PROXY_ERR_CRL_* → 502 o 403 según matriz
-  CATCH RemoteEndpointTimeout:
-     RETORNAR mapear PROXY_ERR_NET_001 → 504
+  policy ← parseRetryPolicy(canalDto.retryPolicy)   // maxRetries, baseDelayMs, maxDelayMs, jitter, status reintentables
+  attempt ← 0
+  lastError ← null
+  LOOP infinito salvo RETORNAR o BREAK:
+     TRY:
+        telemetry.emit({ correlationId, phase: 'HTTP_Request', outcome: 'OK', detail: { attempt } })
+        httpResult ← await httpsClient.requestSecure({
+          url: urlDestino,
+          method: 'POST',
+          headers: headersDesdeCanal,
+          body: payloadCifrado,
+          tlsOptions: derivarDesde(canalDto)
+        })
+        SI esExito(httpResult) OR NOT esReintentable(httpResult, policy):
+           telemetry.emit({ correlationId, phase: 'HTTP_Response', outcome: 'OK', durationMs: ... })
+           SALIR del loop con httpResult
+        lastError ← httpResult
+     CATCH TlsHandshakeError:
+        RETORNAR mapear PROXY_ERR_TLS_001 → 502
+     CATCH CERT_REVOKED / CrlCheckError:
+        RETORNAR mapear PROXY_ERR_CRL_* → 502 o 403 según matriz
+     CATCH e SI esReintentable(e, policy):
+        lastError ← e
+     CATCH e:
+        RETORNAR mapear error no reintentable
+     SI attempt >= policy.maxRetries:
+        telemetry.emit({ correlationId, phase: 'HTTP_Retry_Exhausted', outcome: 'FAIL' })
+        SALIR del loop
+     esperar backoffExponencialConJitter(attempt, policy)   // ej. baseDelayMs * 2^attempt + jitter
+     telemetry.emit({ correlationId, phase: 'HTTP_Retry', outcome: 'OK', detail: { attempt: attempt + 1 } })
+     attempt ← attempt + 1
+  SI lastError y no httpResult exitoso:
+     RETORNAR mapear PROXY_ERR_NET_* o código HTTP coherente al originador (p. ej. inactividad)
+  OPCIONAL post-loop: SI canalDto.fallbackEndpoint y política de producto lo permite, un último intento acotado al fallback
 
   // 5) Respuesta al cliente interno
   RETORNAR 200 con cuerpo según contrato API Gateway</code></pre>

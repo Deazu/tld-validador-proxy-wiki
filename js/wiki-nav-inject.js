@@ -118,6 +118,8 @@
       ) +
       linkSub("business-value.html#hallazgos-legacy", "Hallazgos legacy y riesgos") +
       linkSub("business-value.html#oportunidades-mejora", "Oportunidades de mejora") +
+      linkSub("business-value.html#resiliencia-notificaciones", "Resiliencia y reintentos (notificaciones)") +
+      linkSub("business-value.html#inventario-consumidores-notificacion", "Consumidores tld-notificacion") +
       linkSub("business-value.html#monitoreo-salud", "Monitoreo y salud de canales");
 
     var b2 =
