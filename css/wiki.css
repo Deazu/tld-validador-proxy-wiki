@@ -910,8 +910,11 @@ body.wiki-mermaid-lightbox-open {
 
 .wiki-sidebar-acc-title {
   font-size: 0.68rem;
-  letter-spacing: 0.07em;
+  font-weight: 800;
+  letter-spacing: 0.09em;
   line-height: 1.2;
+  text-transform: uppercase;
+  color: #f0f6fc;
 }
 
 .wiki-sidebar-acc-sub {
@@ -979,4 +982,63 @@ body.wiki-mermaid-lightbox-open {
 
 .wiki-justificacion-anchor {
   scroll-margin-top: 4.5rem;
+}
+
+/* Bloques principales del menú (sidebar + offcanvas): peso visual por pilar */
+.wiki-sidebar-acc-item--proyecto .wiki-sidebar-acc-btn.collapsed,
+.wiki-sidebar-acc-item--proyecto .wiki-sidebar-acc-btn:not(.collapsed) {
+  background: linear-gradient(90deg, rgba(61, 139, 253, 0.14) 0%, transparent 92%) !important;
+  border-left: 3px solid rgba(61, 139, 253, 0.5);
+}
+
+.wiki-sidebar-acc-item--valor .wiki-sidebar-acc-btn.collapsed,
+.wiki-sidebar-acc-item--valor .wiki-sidebar-acc-btn:not(.collapsed) {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.16) 0%, transparent 92%) !important;
+  border-left: 3px solid rgba(251, 191, 36, 0.55);
+}
+
+.wiki-sidebar-acc-item--seguridad .wiki-sidebar-acc-btn.collapsed,
+.wiki-sidebar-acc-item--seguridad .wiki-sidebar-acc-btn:not(.collapsed) {
+  background: linear-gradient(90deg, rgba(168, 85, 247, 0.12) 0%, transparent 92%) !important;
+  border-left: 3px solid rgba(168, 85, 247, 0.45);
+}
+
+.wiki-sidebar-acc-item--componentes .wiki-sidebar-acc-btn.collapsed,
+.wiki-sidebar-acc-item--componentes .wiki-sidebar-acc-btn:not(.collapsed) {
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.12) 0%, transparent 92%) !important;
+  border-left: 3px solid rgba(148, 163, 184, 0.4);
+}
+
+.wiki-sidebar-acc-item--infra .wiki-sidebar-acc-btn.collapsed,
+.wiki-sidebar-acc-item--infra .wiki-sidebar-acc-btn:not(.collapsed) {
+  background: linear-gradient(90deg, rgba(52, 211, 153, 0.12) 0%, transparent 92%) !important;
+  border-left: 3px solid rgba(52, 211, 153, 0.45);
+}
+
+.wiki-cta-stakeholder {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(61, 139, 253, 0.22);
+}
+
+.wiki-cta-stakeholder .card-body {
+  background: linear-gradient(
+    105deg,
+    rgba(61, 139, 253, 0.11) 0%,
+    rgba(13, 202, 240, 0.07) 52%,
+    rgba(255, 255, 255, 0.65) 100%
+  );
+}
+
+.wiki-mermaid-compare {
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.wiki-mission-banner {
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 12px rgba(13, 110, 253, 0.06);
+}
+
+.wiki-cta-stakeholder-list li {
+  line-height: 1.45;
 }

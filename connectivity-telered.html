@@ -46,164 +46,41 @@
         </div>
       </div>
 
-      <section id="justificacion" class="wiki-justificacion-anchor">
+      <section id="alcance-tecnico" class="wiki-justificacion-anchor">
       <p class="text-muted small mb-2">
-        <a href="crypto-transport.html">Transporte mTLS/CRL</a> — manual del túnel TLS, <code>httpsClient.js</code> y <code>crl.js</code>.
-        Esta página es la <strong>justificación de proyecto</strong>: qué fallaba en legacy y cómo el Proxy eleva el estándar (solo <strong>capa de transporte</strong> y PKI Telered).
+        <a href="crypto-transport.html">Transporte mTLS/CRL</a> — <code>httpsClient.js</code>, <code>crl.js</code>.
+        <strong>Contexto ejecutivo y auditoría:</strong> <a href="business-value.html">Valor y justificación</a> (hallazgos legacy, oportunidades, monitoreo).
       </p>
       <h1 class="h2 mb-2">Conectividad Telered y mTLS</h1>
       <p class="lead text-muted mb-3">
-        Documento de arquitectura y auditoría: por qué el <strong>tld-validador-proxy</strong> no es un capricho técnico, sino la respuesta medible a riesgos en servicios que hoy alternan <code>axios</code>, <code>tld-util</code> y una variable global <code>URL_CA_TELERED</code>.
-        No se trata aquí del cifrado del payload de negocio, sino del <strong>handshake HTTPS</strong>, las CA/CRL en EFS y el mTLS opcional.
+        Referencia <strong>técnica</strong> de la capa de transporte: perfiles TLS por canal en DynamoDB, transición desde <code>URL_CA_TELERED</code>, mTLS con EFS y Secrets Manager, CRL y handshake antes del <code>req.write</code> del body de aplicación, y modelo lógico <code>tld-validador-canal</code>.
+        El cifrado del payload de negocio se documenta en <a href="crypto-app.html">Cifrado App</a>.
       </p>
       </section>
 
       <nav class="wiki-inpage-toc small" aria-label="En esta página">
-        <div class="fw-semibold mb-2">En esta página — triángulo de contraste</div>
+        <div class="fw-semibold mb-2">En esta página — transporte TLS</div>
         <ul class="mb-0">
-          <li><a href="#justificacion">Justificación proactiva (mapa mental)</a></li>
-          <li><a href="#escenario-actual-pki">1. Escenario actual (PKI legacy)</a></li>
-          <li><a href="#hallazgos-legacy">2. Hallazgos de auditoría (riesgos)</a></li>
-          <li><a href="#diagrama-legacy-crl">Diagrama: dónde falla el legacy (CRL tardía)</a></li>
-          <li><a href="#arquitectura-proxy">3. El nuevo estándar (Proxy validador)</a></li>
-          <li><a href="#diagrama-proxy-aborto">Diagrama: aborto antes del body (CRL)</a></li>
-          <li><a href="#deteccion-dinamica">3.1. Detección dinámica (DynamoDB)</a></li>
-          <li><a href="#whitelist-transicion">3.2. Transición de whitelist</a></li>
-          <li><a href="#implementacion-mtls">3.3. mTLS (doble pasaporte)</a></li>
-          <li><a href="#crl-proactiva">3.4. CRL proactiva y caché</a></li>
-          <li><a href="#mtls-secrets-manager">3.5. Secrets Manager (passphrase)</a></li>
-          <li><a href="#diagrama-transporte-avanzado">4. Secuencia detallada (transporte)</a></li>
-          <li><a href="#modelo-datos-canal">5. Modelo <code>tld-validador-canal</code></a></li>
+          <li><a href="#alcance-tecnico">Alcance técnico</a></li>
+          <li><a href="#arquitectura-proxy">Política TLS en el Proxy</a></li>
+          <li><a href="#deteccion-dinamica">1. Detección dinámica (DynamoDB)</a></li>
+          <li><a href="#whitelist-transicion">2. Transición de whitelist</a></li>
+          <li><a href="#implementacion-mtls">3. mTLS (doble pasaporte)</a></li>
+          <li><a href="#crl-proactiva">4. CRL proactiva y caché</a></li>
+          <li><a href="#mtls-secrets-manager">5. Secrets Manager (passphrase)</a></li>
+          <li><a href="#diagrama-transporte-avanzado">6. Secuencia detallada (transporte)</a></li>
+          <li><a href="#modelo-datos-canal">7. Modelo <code>tld-validador-canal</code></a></li>
         </ul>
       </nav>
 
-      <section id="escenario-actual-pki" class="mt-4">
-        <h2 class="h3 border-0 pb-0">1. Escenario actual (PKI legacy)</h2>
-        <p>
-          Cuando un canal validador presenta un certificado de servidor <strong>firmado por la CA de Telered</strong> (cadena corporativa montada en EFS), el código legado <em>no</em> infiere eso por inspección del certificado en runtime de forma explícita y centralizada.
-          En la práctica, el servicio (p. ej. <code>tld-api-cuenta-nombre</code>) <strong>adivina</strong> si “esta llamada va por la PKI interna” comparando la URL de destino contra una lista de prefijos en la variable de entorno <code>URL_CA_TELERED</code> (tokens separados por espacios).
-        </p>
-        <p>
-          Si hay coincidencia, entra el camino <code>tld-util</code> (<code>https</code> nativo de Node con <code>Agent</code> que carga las CA desde el volumen EFS): ahí sí se negocia TLS contra el validador usando la confianza Telered.
-          Si <strong>no</strong> hay coincidencia, muchas rutas caen en <code>axios</code> u otro cliente <strong>sin</strong> inyectar esas CA: el mismo microservicio termina hablando con la <strong>misma clase de endpoint</strong> bajo reglas de confianza distintas según un string de despliegue.
-        </p>
+      <section id="arquitectura-proxy" class="mt-4">
+        <h2 class="h3 border-0 pb-0">Política TLS en el Proxy</h2>
         <p class="small text-muted mb-0">
-          Analogía del <strong>portero</strong>: hoy hay dos puertas al mismo edificio; una pide el carné corporativo (Telered) y la otra acepta el carné “genérico” del barrio (CA públicas por defecto). La decisión de qué puerta usar no está en el registro del invitado (datos de canal), sino en una <strong>lista escrita a mano en la pared</strong> (<code>URL_CA_TELERED</code>) que hay que repintar en cada despliegue.
-        </p>
-      </section>
-
-      <section id="hallazgos-legacy" class="mt-5">
-        <h2 class="h3 border-0 pb-0">2. Hallazgos de auditoría (puntos de dolor)</h2>
-        <p>
-          La revisión sobre <code>tld-api-cuenta-nombre</code> (<code>validador.js</code>) y <code>tld-util</code> (<code>@telered/tld-telered-lib/tld-util-http</code>) fija el <strong>baseline</strong> que la nueva Lambda debe superar. No es una crítica al contexto histórico; es el contraste que justifica el proyecto.
+          El contraste frente al stack legacy (<code>axios</code> / <code>tld-util</code>, <code>URL_CA_TELERED</code>) y los diagramas de “por qué” están en <a href="business-value.html">Valor y justificación</a>.
+          Vista resumida de aborto antes del body: <a href="business-value.html#diagrama-proxy-aborto">diagrama en Valor y justificación</a>. La secuencia detallada de esta página amplía pasos de EFS, DynamoDB y caché CRL.
         </p>
 
-        <h3 class="h5 mt-4">Cuadro de riesgos detectados</h3>
-        <div class="table-responsive">
-          <table class="table table-sm table-bordered align-middle">
-            <thead class="table-light">
-              <tr>
-                <th scope="col">Riesgo</th>
-                <th scope="col">Qué ocurre en legacy</th>
-                <th scope="col">Impacto</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="table-warning">
-                <td><strong>Validación reactiva (CRL)</strong></td>
-                <td>En <code>tld-util</code>, <code>sendRequest</code> hace <code>req.write</code> / <code>req.end()</code> con el payload; la CRL y el certificado del peer se evalúan cuando ya llegó la <strong>respuesta</strong> HTTP.</td>
-                <td>El cuerpo sensible puede haber salido <strong>antes</strong> de tener certeza plena de revocación. El <strong>portero</strong> legacy deja pasar la conversación y revisa el carné <em>después</em> de que el visitante ya habló por el micrófono.</td>
-              </tr>
-              <tr>
-                <td><strong>Inconsistencia de seguridad</strong></td>
-                <td>Fuera de la whitelist <code>URL_CA_TELERED</code>, <code>axios</code> (u homólogo) usa confianza por defecto; sin CA EFS ni CRL Telered en ese camino.</td>
-                <td>Dos niveles de protección en un solo servicio; un error de prefijo o un host nuevo mal registrado implica <strong>degradación silenciosa</strong> hacia TLS “público”.</td>
-              </tr>
-              <tr>
-                <td><strong>Latencia de I/O (EFS)</strong></td>
-                <td>La CRL se lee con <code>readFileSync</code> en cada petición por <code>sendRequest</code>, sin caché con TTL en ese código.</td>
-                <td>Multiplica lecturas y parseo bajo carga; presión sobre EFS y colas de latencia sin beneficio proporcional (la CRL cambia mucho más lento que el tráfico).</td>
-              </tr>
-              <tr>
-                <td><strong>Identidad de salida (mTLS)</strong></td>
-                <td><code>validador.js</code> y <code>tld-util</code> no cargan <code>cert</code>/<code>key</code> de cliente.</td>
-                <td>El validador no puede exigir <strong>doble pasaporte</strong> (mTLS) de forma nativa en ese stack; la identidad fuerte es solo la del servidor hacia nosotros.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="small text-muted">
-          Detalle técnico del orden CRL: <a href="crypto-transport.html#handshake-pasos">Handshake TLS (wiki transporte)</a>.
-        </p>
-
-        <h3 class="h5 mt-4" id="diagrama-legacy-crl">Diagrama comparativo — legacy: el momento del fallo (CRL tardía)</h3>
-        <p class="small">
-          La caja sombreada marca donde la política de seguridad <strong>ya es tarde</strong> respecto al envío del payload: la CRL se aplica en el tiempo del callback de respuesta, no antes de <code>req.write</code>.
-        </p>
-        <div class="wiki-mermaid-wrap shadow-sm mb-3 wiki-mermaid-compare">
-          <pre class="mermaid">sequenceDiagram
-    autonumber
-    participant App as Servicio cuenta-nombre
-    participant Rule as URL_CA_TELERED
-    participant Util as tld-util
-    participant Axi as axios
-    participant Val as Validador TLS
-
-    App->>Rule: URL destino
-    alt prefijo en whitelist
-        Rule->>Util: HTTPS + CA EFS
-        rect rgb(255, 235, 200)
-        Util->>Val: req.write(payload) req.end()
-        Val-->>Util: HTTP response
-        end
-        Note over Util,Val: CRL / peer cert revisados tras respuesta reactiva
-    else fuera de whitelist
-        Rule->>Axi: POST sin CA corporativa
-        Axi->>Val: trust store publico default
-    end</pre>
-        </div>
-      </section>
-
-      <section id="arquitectura-proxy" class="mt-5">
-        <h2 class="h3 border-0 pb-0">3. El nuevo estándar (Proxy validador)</h2>
-        <p>
-          La Lambda proxy no es un rediseño cosmético: es un <strong>requisito de seguridad y eficiencia</strong>. La configuración vive en <strong>DynamoDB</strong> por canal (<code>tlsProfile</code>, rutas EFS, <code>mtlsActive</code>); un solo motor <code>https</code> aplica siempre la política declarada en datos.
-          Tras el handshake, el serial del peer se contrasta con la CRL <strong>antes</strong> de <code>req.write</code> del cuerpo de aplicación; la CRL se sirve desde caché en memoria con TTL, reduciendo golpes a EFS.
-        </p>
-        <p class="small text-muted mb-4">
-          El <strong>portero</strong> nuevo mira el carné y la lista negra <strong>antes</strong> de dejar que el visitante suba al escenario; el <strong>doble pasaporte</strong> (mTLS) es opcional pero soportado por canal. Ver implementación en <a href="crypto-transport.html#codigo-fuente"><code>httpsClient.js</code> / <code>crl.js</code></a>.
-        </p>
-
-        <h3 class="h5 mt-4" id="diagrama-proxy-aborto">Diagrama comparativo — proxy: aborto explícito si CRL / revocación falla</h3>
-        <p class="small">
-          El recuadro <span class="text-danger fw-semibold">rojo</span> (tinte en el diagrama) es el compromiso de producto: <strong>no se envía el body HTTP de negocio</strong> si la política de revocación o el estado de la CRL impiden continuar.
-        </p>
-        <div class="wiki-mermaid-wrap shadow-sm mb-4 wiki-mermaid-compare">
-          <pre class="mermaid">sequenceDiagram
-    autonumber
-    participant Prox as Proxy Lambda
-    participant DDB as DynamoDB canal
-    participant EFS as EFS PKI
-    participant CRL as CRL cache
-    participant Val as Validador TLS
-
-    Prox->>DDB: tlsProfile rutas EFS
-    DDB-->>Prox: perfil canal
-    Prox->>EFS: CA PEM
-    Prox->>Val: Handshake TLS
-    Val-->>Prox: cadena servidor
-    Prox->>CRL: serial vs revocados
-    alt revocado o CRL invalida
-        rect rgb(255, 160, 160)
-        Prox->>Prox: ABORTA sin req.write body
-        end
-    else politica OK
-        Prox->>Val: POST body aplicacion cifrada
-        Val-->>Prox: respuesta HTTP
-    end</pre>
-        </div>
-
-        <h3 class="h5 mt-4" id="deteccion-dinamica">3.1. Detección dinámica de infraestructura</h3>
+        <h3 class="h5 mt-4" id="deteccion-dinamica">1. Detección dinámica de infraestructura</h3>
         <p>
           La variable global <code>URL_CA_TELERED</code> obliga a desplegar de nuevo la Lambda cada vez que se añade un prefijo de URL o se corrige un error de configuración.
           Escala mal cuando muchos canales comparten la misma PKI pero distintos hostnames o paths.
@@ -220,7 +97,7 @@
           </p>
         </div>
 
-        <h3 class="h5 mt-4" id="whitelist-transicion">3.2. Estrategia de transición de whitelist</h3>
+        <h3 class="h5 mt-4" id="whitelist-transicion">2. Estrategia de transición de whitelist</h3>
         <p>
           El paso de “lista de prefijos en <code>URL_CA_TELERED</code>” a “perfil por canal en DynamoDB” no puede ser un <em>big bang</em> que deje fuera a integraciones aún no migradas en la tabla.
           El contrato de despliegue híbrido es:
@@ -235,7 +112,7 @@
           Detalle de variables: <a href="network.html">samconfig.toml / entorno</a> · modelo de canal: <a href="data-dictionary.html#tabla-canal">Diccionario de Datos</a>.
         </p>
 
-        <h3 class="h5 mt-4" id="implementacion-mtls">3.3. Implementación de mTLS (la identidad del Proxy)</h3>
+        <h3 class="h5 mt-4" id="implementacion-mtls">3. Implementación de mTLS (la identidad del Proxy)</h3>
         <p>
           <strong>mTLS</strong> (<em>mutual TLS</em>) es el <strong>doble pasaporte</strong>: además de que nosotros validemos el certificado del validador remoto con nuestras CA, el validador valida <em>nuestro</em> certificado de cliente.
           Sin ambos lados conformes, el handshake no completa la política acordada.
@@ -245,7 +122,7 @@
           La carga debe ser <strong>bajo demanda y por perfil</strong>: solo los canales con <code>mtlsActive</code> verdadero leen esos archivos, para no exponer claves en memoria ni en disco de contenedores que no las necesitan.
         </p>
 
-        <h3 class="h5 mt-4" id="crl-proactiva">3.4. Optimización de la CRL (seguridad proactiva)</h3>
+        <h3 class="h5 mt-4" id="crl-proactiva">4. Optimización de la CRL (seguridad proactiva)</h3>
         <p>
           El flujo operativo del Proxy sigue la regla <strong>“verificar antes de hablar”</strong>: una vez establecido el canal TLS y conocido el certificado del peer, se resuelve el serial (con normalización acordada con PKI), se consulta la CRL desde caché o desde EFS si expiró el TTL, y si el certificado está revocado se destruye la petición <strong>sin</strong> enviar el cuerpo HTTP de negocio.
         </p>
@@ -253,7 +130,7 @@
           Esto alinea la política de seguridad con lo que espera un auditor: no basta con haber “tocado” la CRL en algún punto de la vida de la petición; debe impedir el envío de datos sensibles cuando la identidad del peer ya no es aceptable.
         </p>
 
-        <h3 class="h5 mt-4" id="mtls-secrets-manager">3.5. mTLS y Secrets Manager — passphrase de la llave privada</h3>
+        <h3 class="h5 mt-4" id="mtls-secrets-manager">5. mTLS y Secrets Manager — passphrase de la llave privada</h3>
         <p>
           <strong>En tiempo de ejecución</strong> de la función (cada invocación que active mTLS, incluidos cold start y reutilización de contenedor), la passphrase se obtiene solo vía API de AWS, no al empaquetar ni al publicar la plantilla SAM.
           Cuando la clave privada del cliente está cifrada con <strong>passphrase</strong> (PEM encryptado), esa contraseña <strong>no</strong> debe almacenarse en variables de entorno de la Lambda ni en DynamoDB.
@@ -275,7 +152,7 @@
       </section>
 
       <section id="diagrama-transporte-avanzado" class="mt-5">
-        <h2 class="h3 border-0 pb-0">3. Diagrama de secuencia — transporte avanzado</h2>
+        <h2 class="h3 border-0 pb-0">6. Diagrama de secuencia — transporte avanzado</h2>
         <p class="small">
           El participante <strong>Validador TLS</strong> representa el endpoint HTTPS del validador (análogo a un “banco” u otro socio B2B). <strong>CRL</strong> agrupa la política de revocación (fichero en EFS + caché en el proceso del Proxy).
         </p>
@@ -319,7 +196,7 @@
       </section>
 
       <section id="modelo-datos-canal" class="mt-5">
-        <h2 class="h3 border-0 pb-0">5. Modelo de datos propuesto en la wiki (<code>tld-validador-canal</code>)</h2>
+        <h2 class="h3 border-0 pb-0">7. Modelo de datos propuesto en la wiki (<code>tld-validador-canal</code>)</h2>
         <p class="small">
           Los nombres siguientes son el contrato lógico para documentar el diseño; el equipo de datos puede mapearlos a atributos DynamoDB, GSI o documentos embebidos según el esquema real.
           Campos adicionales (p. ej. <code>tlsCaPath</code>, <code>tlsCrlPath</code>, TTL de CRL) pueden ampliar la tabla sin contradecir esta base.
@@ -368,7 +245,7 @@
       </section>
 
       <p class="small text-muted mt-5 mb-1">
-        <strong>Documento:</strong> Conectividad Telered y mTLS (justificación de proyecto). <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+        <strong>Documento:</strong> Conectividad Telered y mTLS (referencia técnica). <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
       </p>
       <p class="text-muted small mb-0">
         Túnel TLS detallado: <a href="crypto-transport.html">Transporte mTLS/CRL</a>. Contrato de datos: <a href="data-dictionary.html">Diccionario de Datos</a>. Cifrado de aplicación (fuera de alcance aquí): <a href="crypto-app.html">Cifrado App</a>.

@@ -8,6 +8,7 @@
   var PAGE_SECTION = {
     "index.html": "proyecto",
     "flow.html": "proyecto",
+    "business-value.html": "valor",
     "crypto-transport.html": "seguridad",
     "connectivity-telered.html": "seguridad",
     "crypto-app.html": "seguridad",
@@ -30,7 +31,9 @@
     var idCollapse = "wikiNav" + sectionKey + suf;
     var idHeading = "wikiNavH" + sectionKey + suf;
     return (
-      '<div class="accordion-item wiki-sidebar-acc-item border-0 bg-transparent">' +
+      '<div class="accordion-item wiki-sidebar-acc-item wiki-sidebar-acc-item--' +
+      sectionKey +
+      ' border-0 bg-transparent">' +
       '<h2 class="accordion-header border-0" id="' +
       idHeading +
       '">' +
@@ -106,22 +109,29 @@
         "El corazón de la Lambda"
       );
 
+    var bValor =
+      linkMain(
+        "business-value.html",
+        "📌",
+        "Valor y justificación",
+        "Bloque 2 — prioridad stakeholder: CRL proactiva, mTLS, dashboard"
+      ) +
+      linkSub("business-value.html#hallazgos-legacy", "Hallazgos legacy y riesgos") +
+      linkSub("business-value.html#oportunidades-mejora", "Oportunidades de mejora") +
+      linkSub("business-value.html#monitoreo-salud", "Monitoreo y salud de canales");
+
     var b2 =
       linkMain(
         "crypto-transport.html#por-que-diferente",
         "🔒",
         "Túnel de Confianza",
-        "TLS, CRL y módulos de transporte"
+        "Conectividad segura TLS mTLS, CRL, módulos"
       ) +
       linkMain(
         "connectivity-telered.html",
         "🌐",
         "Conectividad Telered y mTLS",
-        "Hallazgos y justificación"
-      ) +
-      linkSub(
-        "connectivity-telered.html#justificacion",
-        "Justificación Proactiva"
+        "Perfiles TLS mTLS, whitelist, cert cliente, EFS"
       ) +
       linkMain(
         "crypto-app.html",
@@ -164,14 +174,22 @@
       accordionItem(
         suf,
         "2",
-        "seguridad",
-        "Seguridad y transporte",
-        "Núcleo crítico",
-        b2
+        "valor",
+        "Valor y justificación",
+        "Tras Introducción: el porqué del proxy",
+        bValor
       ) +
       accordionItem(
         suf,
         "3",
+        "seguridad",
+        "Seguridad y transporte",
+        "Conectividad segura TLS mTLS, PKI, cifrado app",
+        b2
+      ) +
+      accordionItem(
+        suf,
+        "4",
         "componentes",
         "Componentes internos",
         "Implementación",
@@ -179,7 +197,7 @@
       ) +
       accordionItem(
         suf,
-        "4",
+        "5",
         "infra",
         "Infraestructura y datos",
         "Persistencia y despliegue",
