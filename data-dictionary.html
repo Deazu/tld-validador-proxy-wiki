@@ -148,7 +148,7 @@
                   <strong>Política de reintentos del Proxy</strong> hacia el downstream del canal (p. ej. <code>cuenta-nombre</code> / validador). Documentación lógica; el equipo fija el parser en código.
                   Ejemplo de payload JSON serializado: <code>{"maxRetries":4,"baseDelayMs":250,"maxDelayMs":8000,"jitterRatio":0.2,"retryableHttpStatuses":[408,429,502,503,504]}</code>.
                   Campos típicos: <code>maxRetries</code>, <code>baseDelayMs</code>, <code>maxDelayMs</code>, <code>jitterRatio</code> o <code>jitterMaxMs</code>, <code>retryableHttpStatuses</code>, opcional <code>retryOnNetworkError</code> (boolean).
-                  Alineado con la estrategia de <strong>exponential backoff</strong> descrita en <a href="business-value.html#resiliencia-notificaciones">Valor y justificación — resiliencia</a>.
+                  Alineado con <strong>exponential backoff</strong> y OPT-IN por operación: <a href="resilience-strategy.html">Sistema de Resiliencia — Capa 1</a> y <a href="resilience-config.html">manual DynamoDB</a>.
                 </td>
               </tr>
               <tr>
@@ -253,7 +253,7 @@
         <p class="small">
           <strong>Rol:</strong> autorización fina: qué códigos de método de negocio (<code>metodo</code> en el evento) están permitidos para un <code>idCanal</code> y, opcionalmente, URL específica por operación.
           El proxy debe rechazar métodos no declarados antes de abrir TLS o cifrar payload.
-          Puede además declarar si la operación participa en la <strong>política de reintentos</strong> del Proxy (<code>retryPolicyActive</code>, <code>maxRetryAttempts</code>) y, en diseños futuros, modo de respuesta síncrona vs <code>202</code> — ver <a href="business-value.html#estrategia-sync-async-fire-forget">Valor y justificación — §4.5</a>.
+          Puede además declarar si la operación participa en la <strong>política de reintentos</strong> del Proxy (<code>retryPolicyActive</code>, <code>maxRetryAttempts</code>) y, en diseños futuros, modo de respuesta síncrona vs <code>202</code> — ver <a href="resilience-config.html">Manual de configuración — Resiliencia</a> y <a href="business-value.html#estrategia-sync-async-fire-forget">Valor y justificación — §4.5</a>.
         </p>
         <div class="table-responsive">
           <table class="table table-sm table-bordered align-middle">

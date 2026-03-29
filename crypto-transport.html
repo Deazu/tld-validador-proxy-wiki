@@ -271,13 +271,13 @@
               <tr><td>Observabilidad</td><td><code>telemetry.js</code></td><td>Registra micro-fases en DynamoDB para trazas forenses sin PII.</td></tr>
               <tr><td>Transporte</td><td><code>httpsClient.js</code></td><td>Motor TLS: agente con CA inyectada, timeouts, Promesas; no conoce el dominio de negocio del target.</td></tr>
               <tr><td>Política PKI</td><td><code>crl.js</code></td><td>Comprueba revocación del <strong>peer</strong> antes de enviar cuerpo sensible.</td></tr>
-              <tr><td>Contratos de fallo</td><td><code>errors.js</code></td><td>Errores tipados para mapeo HTTP y políticas de reintento en el handler.</td></tr>
+              <tr><td>Contratos de fallo</td><td><code>errors.js</code></td><td>Errores tipados para mapeo HTTP; la máquina OPT-IN de reintentos vive en el orquestador — ver <a href="resilience-strategy.html">Sistema de Resiliencia</a>.</td></tr>
             </tbody>
           </table>
         </div>
         <div class="alert alert-secondary mb-0 small">
           El handler distingue <code>TlsHandshakeError</code>, <code>CrlCheckError</code>, <code>RemoteEndpointTimeout</code> y
-          <code>Error('CERT_REVOKED')</code> para decidir códigos HTTP y reintentos. Todo error de red debe llegar como <code>reject</code> de Promesa capturado en el borde del handler.
+          <code>Error('CERT_REVOKED')</code> para decidir códigos HTTP; los fallos de PKI no deben entrar en bucles de reintento. Detalle de capas: <a href="resilience-strategy.html">Resiliencia — Capa 1</a>. Todo error de red debe llegar como <code>reject</code> de Promesa capturado en el borde del handler.
         </div>
         <h4 class="h6 text-secondary mt-4">Mantenimiento del diagrama</h4>
         <p class="small mb-0">

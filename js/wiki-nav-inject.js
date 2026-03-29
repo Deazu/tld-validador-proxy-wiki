@@ -9,6 +9,9 @@
     "index.html": "proyecto",
     "flow.html": "proyecto",
     "business-value.html": "valor",
+    "resilience-strategy.html": "resiliencia",
+    "async-worker.html": "resiliencia",
+    "resilience-config.html": "resiliencia",
     "crypto-transport.html": "seguridad",
     "connectivity-telered.html": "seguridad",
     "crypto-app.html": "seguridad",
@@ -118,9 +121,28 @@
       ) +
       linkSub("business-value.html#hallazgos-legacy", "Hallazgos legacy y riesgos") +
       linkSub("business-value.html#oportunidades-mejora", "Oportunidades de mejora") +
-      linkSub("business-value.html#resiliencia-notificaciones", "Resiliencia y reintentos (notificaciones)") +
-      linkSub("business-value.html#inventario-consumidores-notificacion", "Consumidores tld-notificacion") +
+      linkSub("resilience-strategy.html", "Sistema de Resiliencia (entrada)") +
       linkSub("business-value.html#monitoreo-salud", "Monitoreo y salud de canales");
+
+    var bResiliencia =
+      linkMain(
+        "resilience-strategy.html",
+        "🛡️",
+        "Estrategia y Capa 1",
+        "Reintentos OPT-IN, httpsClient, presupuesto temporal"
+      ) +
+      linkMain(
+        "async-worker.html",
+        "📬",
+        "Arquitectura SQS y Capa 2",
+        "202 Accepted, worker, backoff sin Lambdas recursivas"
+      ) +
+      linkMain(
+        "resilience-config.html",
+        "⚙️",
+        "Configuración en DynamoDB",
+        "Manual de operaciones y ejemplos 0010 / 0020"
+      );
 
     var b2 =
       linkMain(
@@ -184,6 +206,14 @@
       accordionItem(
         suf,
         "3",
+        "resiliencia",
+        "Sistema de Resiliencia",
+        "100 % datos: OPT-IN, SQS, manual DynamoDB",
+        bResiliencia
+      ) +
+      accordionItem(
+        suf,
+        "4",
         "seguridad",
         "Seguridad y transporte",
         "Conectividad segura TLS mTLS, PKI, cifrado app",
@@ -191,7 +221,7 @@
       ) +
       accordionItem(
         suf,
-        "4",
+        "5",
         "componentes",
         "Componentes internos",
         "Implementación",
@@ -199,7 +229,7 @@
       ) +
       accordionItem(
         suf,
-        "5",
+        "6",
         "infra",
         "Infraestructura y datos",
         "Persistencia y despliegue",

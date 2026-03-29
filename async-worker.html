@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tld-validador-proxy — Sistema de Resiliencia: SQS y Capa 2</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/wiki.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <script defer src="js/wiki-init.js"></script>
+  <script defer src="js/wiki-nav-inject.js"></script>
+  <script defer src="js/menu-sync.js"></script>
+  <script defer src="js/wiki-chrome.js"></script>
+</head>
+<body class="wiki-body bg-light">
+  <div class="wiki-layout">
+    <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
+      <div class="wiki-sidebar-inner wiki-sidebar-inner--nav p-2 flex-grow-1 overflow-auto">
+        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-2 px-2">
+          <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
+          <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
+        </a>
+        <nav class="nav flex-column wiki-sidebar-nav pt-1" aria-label="Navegación principal">
+          <div id="wikiSidebarNavMount"></div>
+        </nav>
+      </div>
+    </aside>
+    <main class="wiki-content flex-grow-1">
+      <div class="wiki-mobile-bar d-md-none mb-3">
+        <button class="btn btn-wiki-menu w-100 rounded-pill py-2 d-flex align-items-center justify-content-center gap-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#wikiMenuOffcanvas" aria-controls="wikiMenuOffcanvas" aria-label="Abrir menú de navegación">
+          <span aria-hidden="true">☰</span> Menú wiki
+        </button>
+      </div>
+      <div class="offcanvas offcanvas-start wiki-offcanvas wiki-offcanvas--dark" tabindex="-1" id="wikiMenuOffcanvas" aria-labelledby="wikiMenuOffcanvasLabel">
+        <div class="offcanvas-header border-bottom border-secondary border-opacity-25">
+          <div class="d-flex flex-column">
+            <h2 class="h6 offcanvas-title text-white mb-0" id="wikiMenuOffcanvasLabel">tld-validador-proxy</h2>
+            <span class="small text-white-50">Mapa mental de la arquitectura</span>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+        </div>
+        <div class="offcanvas-body p-2 pt-1">
+          <nav class="nav flex-column wiki-sidebar-nav" aria-label="Navegación móvil">
+            <div id="wikiOffcanvasNavMount"></div>
+          </nav>
+        </div>
+      </div>
+
+      <div class="wiki-content-inner p-4 p-lg-5">
+        <p class="text-muted small mb-2">
+          <a href="index.html">Inicio</a> ·
+          <a href="resilience-strategy.html">Capa 1 — Estrategia síncrona</a> ·
+          <a href="resilience-config.html">Manual DynamoDB</a>
+        </p>
+        <h1 class="h2 mb-2">Sistema de Resiliencia — <strong>Capa 2</strong> (asíncrona: SQS y worker)</h1>
+        <p class="lead text-muted mb-3">
+          Cuando el SLA del banco o los límites de API Gateway hacen imposible “esperar en silencio” toda la cascada de reintentos, el Proxy cambia de postura: acepta el trabajo, lo deposita en <strong>Amazon SQS</strong> y un <strong>Lambda Worker</strong> independiente completa la entrega con la misma disciplina de transporte que la Capa 1.
+        </p>
+
+        <nav class="wiki-inpage-toc small mb-4" aria-label="En esta página">
+          <div class="fw-semibold mb-2">En esta página</div>
+          <ul class="mb-0">
+            <li><a href="#flujo-0010-0020">Notificaciones <code>0010</code> / <code>0020</code> y el buffer SQS</a></li>
+            <li><a href="#http-202">HTTP 202 Accepted y desacoplamiento</a></li>
+            <li><a href="#lambda-worker">Lambda Worker y <code>httpsClient</code></a></li>
+            <li><a href="#sin-recursion">Sin invocaciones recursivas entre Lambdas</a></li>
+          </ul>
+        </nav>
+
+        <section id="flujo-0010-0020" class="mt-4">
+          <h2 class="h3 border-0 pb-0">Flujo de notificaciones (<code>0010</code>, <code>0020</code>) y <strong>Amazon SQS</strong></h2>
+          <p>
+            Los métodos de negocio que hoy representan notificación hacia validador — en la familia de <strong>Alias</strong> (<code>0010</code>) y <strong>P2M</strong> (<code>0020</code>) — son candidatos naturales a la Capa 2 cuando se elige modo asíncrono en datos.
+            El mensaje que sale del API del Proxy no va “directo al vacío”: se serializa como trabajo idempotente (identificadores de correlación, metadatos de canal, huella del payload ya cifrado o referencia según diseño) y se publica en una cola SQS dedicada al dominio del Proxy.
+          </p>
+          <p>
+            <strong>SQS actúa como buffer de presión:</strong> absorbe picos cuando muchas Lambdas satélite disparan notificaciones a la vez; retiene el trabajo si el validador remoto está en mantenimiento; y permite políticas de DLQ para análisis forense sin perder el rastro del intento.
+            Es la <strong>buzonería de mensajería certificada</strong> entre el momento en que el negocio “dijo enviar” y el momento en que el portero del cable confirma la conversación con el banco.
+          </p>
+        </section>
+
+        <section id="http-202" class="mt-5">
+          <h2 class="h3 border-0 pb-0"><strong>HTTP 202 Accepted</strong> — liberar al cliente al instante</h2>
+          <p>
+            En modo asíncrono, la función del API Gateway responde <strong>202 Accepted</strong> en cuanto el trabajo queda <em>comprometido</em> de forma durable: típicamente tras <code>SendMessage</code> exitoso a SQS (o equivalente transaccional que el equipo defina).
+            El cuerpo de la respuesta incluye un <code>correlationId</code> / <code>requestId</code> estable para trazabilidad; no promete que el banco ya haya acusado recibo.
+          </p>
+          <p>
+            Ese contrato desacopla la <strong>latencia percibida</strong> del originador (<code>inactividad</code>, <code>alias</code>, <code>p2m</code>) de la <strong>latencia real</strong> del downstream, que puede incluir varios ciclos de backoff y minutos de ventana de indisponibilidad.
+            El cliente deja de ser rehén del timeout de su propia Lambda o del API interno.
+          </p>
+        </section>
+
+        <section id="lambda-worker" class="mt-5">
+          <h2 class="h3 border-0 pb-0">Lambda Worker: mismo <code>httpsClient</code>, backoff exponencial</h2>
+          <p>
+            El <strong>Worker</strong> es una función Lambda (o conjunto de funciones) distinta del handler síncrono del API: su evento de entrada es el mensaje SQS, no el JSON público del Gateway.
+            Su responsabilidad es reconstruir el contexto mínimo (canal, operación, payload), reutilizar <strong>exactamente el mismo módulo <code>httpsClient.js</code></strong> que la Capa 1 y ejecutar la política de reintentos con <strong>exponential backoff</strong> y jitter entre intentos.
+          </p>
+          <p>
+            Así se preserva una sola implementación del <strong>portero</strong> (TLS, CRL, mTLS): no aparece un segundo cliente HTTP “para la cola” con reglas distintas.
+            La telemetría emitida por el worker reutiliza las mismas fases y códigos que ya entiende el dashboard de salud.
+          </p>
+          <div class="wiki-mermaid-wrap shadow-sm mb-3">
+            <pre class="mermaid">sequenceDiagram
+    autonumber
+    participant Cli as Cliente_interno
+    participant Api as Proxy_API_Lambda
+    participant Q as Amazon_SQS
+    participant W as Proxy_Worker_Lambda
+    participant H as httpsClient
+    participant B as Validador_remoto
+
+    Cli->>Api: POST notificacion metodo 0010 o 0020
+    Api->>Q: SendMessage payload idempotente
+    Q-->>Api: OK
+    Api-->>Cli: 202 Accepted correlationId
+    Q->>W: evento batch mensajes
+    W->>H: requestSecure intento 1
+    H->>B: HTTPS POST cifrado
+    B-->>H: 503 o timeout
+    Note over W: backoff exponencial en el worker
+    W->>H: requestSecure intento 2
+    H->>B: HTTPS POST
+    B-->>H: 200 OK
+    Note over W: telemetria por intento</pre>
+          </div>
+        </section>
+
+        <section id="sin-recursion" class="mt-5 mb-4">
+          <h2 class="h3 border-0 pb-0">Prohibido el “ping-pong” entre Lambdas</h2>
+          <p>
+            El worker <strong>no</strong> invoca de nuevo al API del Proxy para reintentar, ni encadena <code>Invoke</code> de una Lambda sobre otra en bucle.
+            Los reintentos ocurren <strong>dentro del propio proceso del worker</strong> (o mediante reentrega controlada por SQS visibility timeout, según el diseño final que el equipo fije), siempre usando <code>httpsClient</code> hacia el validador.
+            Ese límite arquitectónico evita coste explosivo, correlaciones rotas y profundidad de pila impredecible en X-Ray.
+          </p>
+          <p class="small text-muted mb-0">
+            Configuración de modo síncrono vs asíncrono y campos en DynamoDB: <a href="resilience-config.html">Manual de configuración</a> ·
+            Capa 1: <a href="resilience-strategy.html">Estrategia y presupuesto temporal</a>.
+          </p>
+        </section>
+
+        <p class="small text-muted mt-4 mb-1">
+          <strong>Documento:</strong> Sistema de Resiliencia — Capa 2. <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+        </p>
+      </div>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

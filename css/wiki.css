@@ -997,6 +997,12 @@ body.wiki-mermaid-lightbox-open {
   border-left: 3px solid rgba(251, 191, 36, 0.55);
 }
 
+.wiki-sidebar-acc-item--resiliencia .wiki-sidebar-acc-btn.collapsed,
+.wiki-sidebar-acc-item--resiliencia .wiki-sidebar-acc-btn:not(.collapsed) {
+  background: linear-gradient(90deg, rgba(244, 114, 182, 0.14) 0%, transparent 92%) !important;
+  border-left: 3px solid rgba(244, 114, 182, 0.5);
+}
+
 .wiki-sidebar-acc-item--seguridad .wiki-sidebar-acc-btn.collapsed,
 .wiki-sidebar-acc-item--seguridad .wiki-sidebar-acc-btn:not(.collapsed) {
   background: linear-gradient(90deg, rgba(168, 85, 247, 0.12) 0%, transparent 92%) !important;

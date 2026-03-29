@@ -102,8 +102,8 @@
           </div>
           <h3 class="h5 mt-4" id="diagrama-secuencia-reintentos">Escenario: fallo transitorio en el downstream y política de reintentos</h3>
           <p class="small text-muted">
-            Cuando el originador es p. ej. la Lambda <code>inactividad</code>, el Proxy actúa como <strong>buffer de resiliencia</strong>: detecta errores reintentables del servicio de notificación / validador (<code>cuenta-nombre</code> o remoto), aplica <strong>exponential backoff</strong> con límites declarados en <code>retryPolicy</code> del canal (<a href="data-dictionary.html#tabla-canal">diccionario</a>) y solo entonces devuelve error definitivo al llamador.
-            Así se evita delegar en cadena a <code>tld-notificacion</code> con reglas opacas. Participantes sin espacios en el id para un render Mermaid estable.
+            Cuando el originador es p. ej. la Lambda <code>inactividad</code>, el Proxy actúa como <strong>buffer de resiliencia</strong>: detecta errores reintentables del validador remoto o pasarela intermedia, aplica <strong>exponential backoff</strong> solo si DynamoDB activó la política (<code>retryPolicyActive</code>, <code>retryPolicy</code> en <a href="data-dictionary.html#tabla-canal">diccionario</a>) y respeta el <strong>presupuesto temporal</strong> de la función antes de cada nuevo intento.
+            Arquitectura soberana del Proxy: <a href="resilience-strategy.html">Sistema de Resiliencia — Capa 1</a>. Participantes sin espacios en el id para un render Mermaid estable.
           </p>
           <div class="wiki-mermaid-wrap shadow-sm">
             <pre class="mermaid">sequenceDiagram
@@ -135,7 +135,7 @@
     end</pre>
           </div>
           <p class="small text-muted mb-0">
-            Justificación de negocio y riesgo del patrón legacy: <a href="business-value.html#resiliencia-notificaciones">Valor y justificación — §4 Resiliencia</a>.
+            Estrategia OPT-IN y <code>httpsClient</code>: <a href="resilience-strategy.html">Resiliencia — Capa 1</a> · contexto de negocio y auditoría: <a href="business-value.html#resiliencia-notificaciones">Valor y justificación — §4</a>.
           </p>
 
           <h3 class="h5 mt-4" id="diagrama-notificacion-asincrona">Notificación asíncrona: 202 Accepted, cola interna y backoff hacia el banco</h3>
@@ -163,7 +163,7 @@
     Note over Prox: telemetria por intento sin bloquear al Cli</pre>
           </div>
           <p class="small text-muted mb-0">
-            Diseño y trade-offs (síncrono vs 202, <code>retryPolicyActive</code>): <a href="business-value.html#estrategia-sync-async-fire-forget">Valor y justificación — §4.5</a>.
+            SQS, 202 y worker: <a href="async-worker.html">Resiliencia — Capa 2</a> · configuración en tabla: <a href="resilience-config.html">Manual DynamoDB</a> · trade-offs de producto: <a href="business-value.html#estrategia-sync-async-fire-forget">Valor y justificación — §4.5</a>.
           </p>
         </section>
 
@@ -206,12 +206,14 @@
      telemetry.emit({ correlationId, phase: 'Crypto_App', outcome: 'FAIL', detail: { internalCode: 'PROXY_ERR_ENC_001' } })
      RETORNAR 500
 
-  // 4) Transporte — httpsClient.requestSecure + política de reintentos (retryPolicy en canalDto)
+  // 4) Transporte — httpsClient.requestSecure + política OPT-IN (retryPolicy / retryPolicyActive por operación)
   urlDestino ← resolver URL desde canalDto + operación (urlOperacion o urlValidador)
-  policy ← parseRetryPolicy(canalDto.retryPolicy)   // maxRetries, baseDelayMs, maxDelayMs, jitter, status reintentables
+  policy ← parseRetryPolicy(canalDto.retryPolicy)   // solo si operación tiene retryPolicyActive
   attempt ← 0
   lastError ← null
   LOOP infinito salvo RETORNAR o BREAK:
+     SI NOT debeReintentarOperacion(operacionDto): SALIR del loop con primer resultado
+     SI context.getRemainingTimeInMillis() < umbralPresupuesto(policy, attempt): telemetría presupuesto; SALIR del loop
      TRY:
         telemetry.emit({ correlationId, phase: 'HTTP_Request', outcome: 'OK', detail: { attempt } })
         httpResult ← await httpsClient.requestSecure({

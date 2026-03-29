@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tld-validador-proxy — Manual de configuración: Resiliencia DynamoDB</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/wiki.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <script defer src="js/wiki-init.js"></script>
+  <script defer src="js/wiki-nav-inject.js"></script>
+  <script defer src="js/menu-sync.js"></script>
+  <script defer src="js/wiki-chrome.js"></script>
+</head>
+<body class="wiki-body bg-light">
+  <div class="wiki-layout">
+    <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
+      <div class="wiki-sidebar-inner wiki-sidebar-inner--nav p-2 flex-grow-1 overflow-auto">
+        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-2 px-2">
+          <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
+          <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
+        </a>
+        <nav class="nav flex-column wiki-sidebar-nav pt-1" aria-label="Navegación principal">
+          <div id="wikiSidebarNavMount"></div>
+        </nav>
+      </div>
+    </aside>
+    <main class="wiki-content flex-grow-1">
+      <div class="wiki-mobile-bar d-md-none mb-3">
+        <button class="btn btn-wiki-menu w-100 rounded-pill py-2 d-flex align-items-center justify-content-center gap-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#wikiMenuOffcanvas" aria-controls="wikiMenuOffcanvas" aria-label="Abrir menú de navegación">
+          <span aria-hidden="true">☰</span> Menú wiki
+        </button>
+      </div>
+      <div class="offcanvas offcanvas-start wiki-offcanvas wiki-offcanvas--dark" tabindex="-1" id="wikiMenuOffcanvas" aria-labelledby="wikiMenuOffcanvasLabel">
+        <div class="offcanvas-header border-bottom border-secondary border-opacity-25">
+          <div class="d-flex flex-column">
+            <h2 class="h6 offcanvas-title text-white mb-0" id="wikiMenuOffcanvasLabel">tld-validador-proxy</h2>
+            <span class="small text-white-50">Mapa mental de la arquitectura</span>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+        </div>
+        <div class="offcanvas-body p-2 pt-1">
+          <nav class="nav flex-column wiki-sidebar-nav" aria-label="Navegación móvil">
+            <div id="wikiOffcanvasNavMount"></div>
+          </nav>
+        </div>
+      </div>
+
+      <div class="wiki-content-inner p-4 p-lg-5">
+        <p class="text-muted small mb-2">
+          <a href="index.html">Inicio</a> ·
+          <a href="resilience-strategy.html">Capa 1</a> ·
+          <a href="async-worker.html">Capa 2</a> ·
+          <a href="data-dictionary.html#tabla-operacion"><code>tld-validador-canal-operacion</code></a>
+        </p>
+        <h1 class="h2 mb-2">Manual de configuración — Resiliencia en <strong>DynamoDB</strong></h1>
+        <p class="lead text-muted mb-3">
+          Guía práctica para <strong>Operaciones</strong> e ingeniería de plataforma: activar o desactivar reintentos por operación, dimensionar intentos frente al SLA del banco y publicar cambios con trazabilidad.
+          Los nombres de atributo siguen el <a href="data-dictionary.html">Diccionario de Datos</a>; los ejemplos son ilustrativos hasta que el parser definitivo quede fijado en código.
+        </p>
+
+        <nav class="wiki-inpage-toc small mb-4" aria-label="En esta página">
+          <div class="fw-semibold mb-2">En esta página</div>
+          <ul class="mb-0">
+            <li><a href="#activar-retry">Activar <code>retryPolicyActive</code></a></li>
+            <li><a href="#sla-max-retries">Calcular <code>maxRetryAttempts</code> según SLA</a></li>
+            <li><a href="#ejemplo-0010">Ejemplo — método <code>0010</code> (Alias)</a></li>
+            <li><a href="#ejemplo-0020">Ejemplo — método <code>0020</code> (P2M)</a></li>
+            <li><a href="#checklist-ops">Checklist antes de tocar producción</a></li>
+          </ul>
+        </nav>
+
+        <section id="activar-retry" class="mt-4">
+          <h2 class="h3 border-0 pb-0">Cómo activar <code>retryPolicyActive</code></h2>
+          <ol class="small">
+            <li class="mb-2">
+              <strong>Localiza la fila de operación</strong> en <code>tld-validador-canal-operacion</code> (o el nombre operativo acordado) que empareja <code>idCanalValidador</code> (o GSI por alias) con el <code>metodo</code> — p. ej. <code>0010</code> o <code>0020</code>.
+            </li>
+            <li class="mb-2">
+              Establece <code>retryPolicyActive</code> en <strong><code>true</code></strong> solo si negocio y el banco aceptan <em>múltiples intentos de entrega</em> hacia ese endpoint (idempotencia o deduplicación en destino).
+            </li>
+            <li class="mb-2">
+              Completa <code>maxRetryAttempts</code> (véase siguiente sección) y confirma que el documento JSON <code>retryPolicy</code> en <code>tld-validador-canal</code> (o override futuro por operación) define <code>baseDelayMs</code>, <code>maxDelayMs</code>, <code>jitterRatio</code> y <code>retryableHttpStatuses</code> alineados con ese canal.
+            </li>
+            <li class="mb-0">
+              Para <strong>desactivar</strong> de inmediato ante un incidente: pasa <code>retryPolicyActive</code> a <code>false</code> y registra el cambio en el ticket de cambio; el Proxy debe comportarse en modo conservador (un intento principal, sin bucle de backoff en Capa 1).
+            </li>
+          </ol>
+          <div class="alert alert-warning small mb-0" role="note">
+            <strong>OPT-IN:</strong> Si el atributo falta o es <code>false</code>, asume que <strong>no</strong> hay máquina de reintentos para esa operación, salvo lógica mínima de producto documentada aparte.
+          </div>
+        </section>
+
+        <section id="sla-max-retries" class="mt-5">
+          <h2 class="h3 border-0 pb-0">Cómo calcular <code>maxRetryAttempts</code> con el SLA del banco</h2>
+          <p>
+            <code>maxRetryAttempts</code> es el número de <strong>reintentos después del primer intento</strong> (si vale <code>3</code>, hay hasta cuatro contactos HTTP si todos fallan de forma reintentable).
+            Debe caber dentro de dos límites simultáneos: el <strong>timeout de la Lambda</strong> del API (Capa 1) o el <strong>presupuesto del worker</strong> (Capa 2), y el <strong>SLA de respuesta</strong> que el originador pueda esperar en modo síncrono.
+          </p>
+          <p>
+            <strong>Método práctico:</strong>
+          </p>
+          <ol class="small">
+            <li>Fija <code>T_cliente_max</code> = tiempo máximo aceptable que el llamador puede bloquearse (p. ej. 25&nbsp;s si API Gateway corta a 29&nbsp;s).</li>
+            <li>Reserva <code>T_margen</code> para serializar respuesta, logs y telemetría (p. ej. 2–3&nbsp;s) y <code>T_request</code> estimado por ida y vuelta HTTP al validador (p. ej. 4&nbsp;s peor caso).</li>
+            <li>Para cada intento previsto, estima <code>T_backoff(k)</code> como el retardo antes del intento <code>k</code> (backoff exponencial con techo <code>maxDelayMs</code> del JSON de política).</li>
+            <li>Encuentra el mayor <code>N</code> tal que <code>Σ<sub>k=0..N</sub> T_request + Σ<sub>k=1..N</sub> T_backoff(k) ≤ T_cliente_max - T_margen</code>.</li>
+            <li>Define <code>maxRetryAttempts = N</code> (reintentos tras el primero) o ajusta a la baja si el banco pide no más de <em>K</em> contactos en ventana de incidente.</li>
+          </ol>
+          <p class="small text-muted mb-0">
+            En <strong>modo 202 + SQS</strong>, el cálculo se relaja para el API (solo debe alcanzar a encolar), pero el worker sigue necesitando un tope coherente con DLQ y alarmas. Ver <a href="async-worker.html">Capa 2</a>.
+          </p>
+        </section>
+
+        <section id="ejemplo-0010" class="mt-5">
+          <h2 class="h3 border-0 pb-0">Ejemplo — método <code>0010</code> (notificación <strong>Alias</strong>)</h2>
+          <p class="small text-muted">
+            Objetivo: notificación al validador con reintentos moderados en Capa 1; canal con política JSON ya definida a nivel <code>tld-validador-canal</code>.
+          </p>
+          <pre class="bg-light border rounded p-3 small mb-2"><code>// Ítem en tld-validador-canal-operacion (atributos ilustrativos)
+{
+  "PK": "CANAL#1000",
+  "SK": "OP#0010",
+  "metodo": "0010",
+  "retryPolicyActive": true,
+  "maxRetryAttempts": 3,
+  "descripcion": "Notificacion alias / baja — downstream idempotente"
+}</code></pre>
+          <p class="small mb-0">
+            En <code>tld-validador-canal</code> para el mismo canal, un <code>retryPolicy</code> coherente podría ser:
+            <code>{"maxRetries":3,"baseDelayMs":400,"maxDelayMs":8000,"jitterRatio":0.2,"retryableHttpStatuses":[408,429,502,503,504]}</code>
+            (el implementador fusiona <code>maxRetryAttempts</code> de la operación con este documento según reglas de producto documentadas en <a href="data-dictionary.html#tabla-operacion">diccionario</a>).
+          </p>
+        </section>
+
+        <section id="ejemplo-0020" class="mt-5">
+          <h2 class="h3 border-0 pb-0">Ejemplo — método <code>0020</code> (notificación <strong>P2M</strong>)</h2>
+          <p class="small text-muted">
+            Objetivo: método de notificación validador en P2M; puede activarse Capa 2 si el SLA del API interno es más corto que la ventana de backoff.
+          </p>
+          <pre class="bg-light border rounded p-3 small mb-2"><code>// Ítem en tld-validador-canal-operacion
+{
+  "PK": "CANAL#2005",
+  "SK": "OP#0020",
+  "metodo": "0020",
+  "retryPolicyActive": true,
+  "maxRetryAttempts": 5,
+  "asyncDeliveryPreferred": true,
+  "descripcion": "P2M — usar 202+SQS en despliegue que exponga worker"
+}</code></pre>
+          <p class="small mb-0">
+            El flag <code>asyncDeliveryPreferred</code> es un <strong>ejemplo de convención</strong> futura: indica a despliegue y orquestador que, si la función y la cola están cableadas, se prefiera <a href="async-worker.html#http-202">HTTP 202</a> en lugar de agotar backoff en la invocación síncrona.
+            Hasta que exista en el esquema real, el equipo puede documentar el mismo criterio solo con parámetros SAM o feature flag.
+          </p>
+        </section>
+
+        <section id="checklist-ops" class="mt-5 mb-4">
+          <h2 class="h3 border-0 pb-0">Checklist antes de cambiar producción</h2>
+          <ul class="small mb-0">
+            <li>¿El validador declara idempotencia o clave de deduplicación para <code>0010</code>/<code>0020</code>?</li>
+            <li>¿La suma backoff + HTTP cabe en timeout de Lambda y en expectativa del originador (Capa 1)?</li>
+            <li>¿Alarmas y DLQ de SQS están definidas si se usa Capa 2?</li>
+            <li>¿Telemetría <code>HTTP_Retry</code> / <code>HTTP_Retry_Exhausted</code> visible en el dashboard de canal?</li>
+          </ul>
+        </section>
+
+        <p class="small text-muted mt-4 mb-1">
+          <strong>Documento:</strong> Manual de configuración — Resiliencia. <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+        </p>
+      </div>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

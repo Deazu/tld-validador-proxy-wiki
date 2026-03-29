@@ -79,7 +79,7 @@
 
         <div class="alert alert-info border-start border-4 border-info wiki-mission-banner mb-4" role="status">
           <p class="mb-2"><strong>Nuestra Misión:</strong> Garantizar la integridad y confidencialidad en el transporte de datos financieros, eliminando la deuda técnica de validaciones reactivas y estableciendo una identidad digital soberana mediante mTLS nativo y observabilidad forense.</p>
-          <p class="mb-0"><strong>Garantía de entrega:</strong> Centralización de la lógica de reintentos para flujos críticos de inactividad y notificaciones, eliminando la fragilidad de los componentes legacy (<code>inactividad</code> → <code>cuenta-nombre</code> → <code>tld-notificacion</code>) y tratando el Proxy como <strong>buffer de resiliencia</strong> con backoff exponencial antes de devolver fallo definitivo al originador. Detalle en <a href="business-value.html#resiliencia-notificaciones">Valor y justificación — resiliencia</a>.</p>
+          <p class="mb-0"><strong>Resiliencia de entrega:</strong> El Proxy incorpora un <strong>Sistema de Resiliencia</strong> gobernado por DynamoDB (políticas OPT-IN, cola SQS y worker dedicado). Es un diseño <em>nuevo y soberano</em> en este repositorio: la orquestación, el cliente HTTP y la configuración operativa se documentan en <a href="resilience-strategy.html">Estrategia y Capa 1</a>, <a href="async-worker.html">SQS y Capa 2</a> y <a href="resilience-config.html">Manual de configuración</a>. El contexto de negocio y auditoría legacy sigue en <a href="business-value.html#resiliencia-notificaciones">Valor y justificación — §4</a>.</p>
         </div>
 
         <p class="text-center mx-auto mb-4" style="max-width: 42rem;">
@@ -216,7 +216,7 @@
           Cifrado de payload: <a href="crypto-app.html">Cifrado App</a> ·
           Conectividad Segura TLS mTLS y CRL: <a href="crypto-transport.html#diagrama-interaccion">Transporte mTLS/CRL</a> ·
           <a href="connectivity-telered.html">Conectividad Telered</a> ·
-          <a href="flow.html">Flujo General</a> · <a href="data-dictionary.html">Diccionario de Datos</a> ·
+          <a href="flow.html">Flujo General</a> · <a href="resilience-strategy.html">Sistema de Resiliencia</a> · <a href="data-dictionary.html">Diccionario de Datos</a> ·
           <a href="business-value.html#monitoreo-salud">Monitoreo y salud de canales</a> ·
           <a href="identity.html">Identity Manager</a> · <a href="logger.html">Logger</a>.
         </p>
