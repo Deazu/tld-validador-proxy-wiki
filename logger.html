@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tld-validador-proxy — Logger y sanitización</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/wiki.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <script defer src="js/wiki-init.js"></script>
+  <script defer src="js/menu-sync.js"></script>
+  <script defer src="js/wiki-chrome.js"></script>
+</head>
+<body class="wiki-body bg-light">
+  <div class="wiki-layout">
+    <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
+      <div class="wiki-sidebar-inner p-3 flex-grow-1 overflow-auto">
+        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-1 px-2">
+          <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
+          <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
+        </a>
+        <nav class="nav flex-column wiki-sidebar-nav pt-2" aria-label="Navegación principal">
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🚀</span> PROYECTO</div>
+          <a class="nav-link wiki-nav-link" href="index.html"><span class="wiki-nav-ico" aria-hidden="true">🛡️</span> Misión</a>
+          <a class="nav-link wiki-nav-link" href="flow.html"><span class="wiki-nav-ico" aria-hidden="true">📊</span> Flujo General</a>
+          <a class="nav-link wiki-nav-link" href="data-dictionary.html"><span class="wiki-nav-ico" aria-hidden="true">📖</span> Diccionario de Datos</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">📜</span> INFRAESTRUCTURA</div>
+          <a class="nav-link wiki-nav-link" href="network.html"><span class="wiki-nav-ico" aria-hidden="true">📋</span> samconfig.toml</a>
+          <a class="nav-link wiki-nav-link" href="deployment.html"><span class="wiki-nav-ico" aria-hidden="true">📄</span> template.yaml</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🔐</span> SEGURIDAD</div>
+          <a class="nav-link wiki-nav-link" href="crypto-app.html"><span class="wiki-nav-ico" aria-hidden="true">🔑</span> Cifrado App</a>
+          <a class="nav-link wiki-nav-link wiki-nav-link-parent" href="crypto-transport.html#diagrama-interaccion"><span class="wiki-nav-ico" aria-hidden="true">🔒</span> Transporte mTLS/CRL</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#diagrama-interaccion">Diagrama de secuencia</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#codigo-fuente">Código fuente (módulos)</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#variables-efs">Variables y EFS</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#rendimiento-lambda">Rendimiento Lambda</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#seguridad-cumplimiento">Seguridad</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#depuracion-troubleshooting">Depuración</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#evolucion-proximos-pasos">Evolución</a>
+          <a class="nav-link wiki-nav-link" href="connectivity-telered.html"><span class="wiki-nav-ico" aria-hidden="true">🌐</span> Conectividad Telered</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🛠️</span> COMPONENTES</div>
+          <a class="nav-link wiki-nav-link" href="identity.html"><span class="wiki-nav-ico" aria-hidden="true">👤</span> Identidad (Canal)</a>
+          <a class="nav-link wiki-nav-link active" href="logger.html"><span class="wiki-nav-ico" aria-hidden="true">📝</span> Logger</a>
+        </nav>
+      </div>
+    </aside>
+    <main class="wiki-content flex-grow-1">
+      <div class="wiki-mobile-bar d-md-none mb-3">
+        <div class="dropdown">
+          <button class="btn btn-wiki-menu dropdown-toggle w-100 rounded-pill py-2" type="button" data-bs-toggle="dropdown">Menú wiki</button>
+          <ul class="dropdown-menu w-100 shadow border-0">
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🚀</span> PROYECTO</h6></li>
+            <li><a class="dropdown-item" href="index.html">🛡️ Misión</a></li>
+            <li><a class="dropdown-item" href="flow.html">📊 Flujo General</a></li>
+            <li><a class="dropdown-item" href="data-dictionary.html">📖 Diccionario de Datos</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">📜</span> INFRAESTRUCTURA</h6></li>
+            <li><a class="dropdown-item" href="network.html">📋 samconfig.toml</a></li>
+            <li><a class="dropdown-item" href="deployment.html">📄 template.yaml</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🔐</span> SEGURIDAD</h6></li>
+            <li><a class="dropdown-item" href="crypto-app.html">🔑 Cifrado App</a></li>
+            <li><a class="dropdown-item" href="crypto-transport.html#diagrama-interaccion">🔒 Transporte mTLS/CRL</a></li>
+            <li><a class="dropdown-item" href="connectivity-telered.html">🌐 Conectividad Telered</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🛠️</span> COMPONENTES</h6></li>
+            <li><a class="dropdown-item" href="identity.html">👤 Identidad (Canal)</a></li>
+            <li><a class="dropdown-item active" href="logger.html">📝 Logger</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="wiki-content-inner p-4 p-lg-5">
+        <h1 class="h2 mb-3">Logger (<code>logger.js</code>) en el Proxy</h1>
+        <p class="lead text-muted">
+          Referencia de diseño tomada de <code>tld-api-p2m-intento_refactory/.../utils/logger.js</code>: trazas opcionales, seguras y alineadas a la estrategia «pies de plomo».
+        </p>
+
+        <div class="wiki-mermaid-wrap shadow-sm mb-4">
+          <pre class="mermaid">flowchart TD
+    A[Argumentos Print] --> B{PRINT_LOGS es on?}
+    B -->|no| Z[No escribe consola]
+    B -->|si| C[sanitize recursivo]
+    C --> D{clave en DENY_KEYS?}
+    D -->|si| E[sustituir por MASKED]
+    D -->|no| F[truncar strings largos]
+    F --> G["console.log seguro"]</pre>
+        </div>
+
+        <h2 class="h4 mt-4">Por qué importa la sanitización</h2>
+        <p>
+          CloudWatch y herramientas de APM indexan todo lo que imprimimos. Un solo <code>console.log(canal)</code> con objeto Dynamo sin filtrar puede exponer
+          rutas de llaves, metadatos de cuenta o estructuras de petición. El proxy concentra <strong>canales validadores</strong> y <strong>material criptográfico indirecto</strong> (referencias a EFS/KMS);
+          el riesgo de fuga por log es mayor que en un CRUD genérico.
+        </p>
+
+        <h2 class="h4 mt-4">Cómo funciona <code>Print</code></h2>
+        <ul>
+          <li>Solo emite si <code>process.env.PRINT_LOGS === "on"</code> (igualdad estricta, sensible a mayúsculas).</li>
+          <li>Cada argumento se pasa por <code>sanitize</code> antes de <code>console.log</code>.</li>
+          <li><code>sanitize</code> recorre objetos planos y arrays; enmascara propiedades cuyo nombre (case-insensitive) está en <code>DENY_KEYS</code> con <code>[MASKED]</code>.</li>
+          <li>Trunca strings largos; representa <code>Buffer</code> como longitud; preserva stack en <code>Error</code> de forma acotada al mensaje truncado.</li>
+        </ul>
+
+        <h2 class="h4 mt-4"><code>DENY_KEYS</code> y el Proxy</h2>
+        <p>Mantener como mínimo las claves ya definidas en refactory (<code>token</code>, <code>password</code>, <code>llavedescifrado</code>, <code>cuenta</code>, etc.).</p>
+        <p><strong>Ampliaciones recomendadas</strong> para el contexto canal / validador:</p>
+        <ul>
+          <li><code>llavecifrado</code>, <code>idllave</code>, <code>idLlave</code></li>
+          <li><code>dataplana</code>, <code>payload</code> (si algún middleware fusiona body en un objeto logueado)</li>
+          <li><code>authorization</code>, <code>apikey</code>, <code>pem</code>, <code>privatekey</code>, <code>publickey</code></li>
+        </ul>
+        <div class="alert alert-warning small mb-0">
+          Evitar añadir claves demasiado genéricas como <code>data</code> sin consenso del equipo: puede ocultar campos legítimos de depuración.
+        </div>
+
+        <h2 class="h4 mt-4">Coherencia con otros módulos</h2>
+        <p>
+          <code>operacionesPaquete.js</code> usa <code>(process.env.PRINT_LOGS || 'off').toLowerCase() === 'on'</code>. En despliegue del proxy, documentar un valor único (<code>on</code> minúsculas)
+          o unificar ambos módulos con la misma función <code>isPrintLogsEnabled()</code> compartida.
+        </p>
+
+        <p class="text-muted small mt-5 mb-0">
+          Flujo extremo a extremo: <a href="flow.html">Flujo General</a>.
+        </p>
+      </div>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

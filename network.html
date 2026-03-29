@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tld-validador-proxy — Configuración samconfig.toml</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/wiki.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <script defer src="js/wiki-init.js"></script>
+  <script defer src="js/menu-sync.js"></script>
+  <script defer src="js/wiki-chrome.js"></script>
+</head>
+<body class="wiki-body bg-light">
+  <div class="wiki-layout">
+    <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
+      <div class="wiki-sidebar-inner p-3 flex-grow-1 overflow-auto">
+        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-1 px-2">
+          <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
+          <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
+        </a>
+        <nav class="nav flex-column wiki-sidebar-nav pt-2" aria-label="Navegación principal">
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🚀</span> PROYECTO</div>
+          <a class="nav-link wiki-nav-link" href="index.html"><span class="wiki-nav-ico" aria-hidden="true">🛡️</span> Misión</a>
+          <a class="nav-link wiki-nav-link" href="flow.html"><span class="wiki-nav-ico" aria-hidden="true">📊</span> Flujo General</a>
+          <a class="nav-link wiki-nav-link" href="data-dictionary.html"><span class="wiki-nav-ico" aria-hidden="true">📖</span> Diccionario de Datos</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">📜</span> INFRAESTRUCTURA</div>
+          <a class="nav-link wiki-nav-link active" href="network.html"><span class="wiki-nav-ico" aria-hidden="true">📋</span> samconfig.toml</a>
+          <a class="nav-link wiki-nav-link" href="deployment.html"><span class="wiki-nav-ico" aria-hidden="true">📄</span> template.yaml</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🔐</span> SEGURIDAD</div>
+          <a class="nav-link wiki-nav-link" href="crypto-app.html"><span class="wiki-nav-ico" aria-hidden="true">🔑</span> Cifrado App</a>
+          <a class="nav-link wiki-nav-link wiki-nav-link-parent" href="crypto-transport.html#diagrama-interaccion"><span class="wiki-nav-ico" aria-hidden="true">🔒</span> Transporte mTLS/CRL</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#diagrama-interaccion">Diagrama de secuencia</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#codigo-fuente">Código fuente (módulos)</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#variables-efs">Variables y EFS</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#rendimiento-lambda">Rendimiento Lambda</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#seguridad-cumplimiento">Seguridad</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#depuracion-troubleshooting">Depuración</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#evolucion-proximos-pasos">Evolución</a>
+          <a class="nav-link wiki-nav-link" href="connectivity-telered.html"><span class="wiki-nav-ico" aria-hidden="true">🌐</span> Conectividad Telered</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🛠️</span> COMPONENTES</div>
+          <a class="nav-link wiki-nav-link" href="identity.html"><span class="wiki-nav-ico" aria-hidden="true">👤</span> Identidad (Canal)</a>
+          <a class="nav-link wiki-nav-link" href="logger.html"><span class="wiki-nav-ico" aria-hidden="true">📝</span> Logger</a>
+        </nav>
+      </div>
+    </aside>
+    <main class="wiki-content flex-grow-1">
+      <div class="wiki-mobile-bar d-md-none mb-3">
+        <div class="dropdown">
+          <button class="btn btn-wiki-menu dropdown-toggle w-100 rounded-pill py-2" type="button" data-bs-toggle="dropdown">Menú wiki</button>
+          <ul class="dropdown-menu w-100 shadow border-0">
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🚀</span> PROYECTO</h6></li>
+            <li><a class="dropdown-item" href="index.html">🛡️ Misión</a></li>
+            <li><a class="dropdown-item" href="flow.html">📊 Flujo General</a></li>
+            <li><a class="dropdown-item" href="data-dictionary.html">📖 Diccionario de Datos</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">📜</span> INFRAESTRUCTURA</h6></li>
+            <li><a class="dropdown-item active" href="network.html">📋 samconfig.toml</a></li>
+            <li><a class="dropdown-item" href="deployment.html">📄 template.yaml</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🔐</span> SEGURIDAD</h6></li>
+            <li><a class="dropdown-item" href="crypto-app.html">🔑 Cifrado App</a></li>
+            <li><a class="dropdown-item" href="crypto-transport.html#diagrama-interaccion">🔒 Transporte mTLS/CRL</a></li>
+            <li><a class="dropdown-item" href="connectivity-telered.html">🌐 Conectividad Telered</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🛠️</span> COMPONENTES</h6></li>
+            <li><a class="dropdown-item" href="identity.html">👤 Identidad (Canal)</a></li>
+            <li><a class="dropdown-item" href="logger.html">📝 Logger</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <h1 class="h2 mb-3">Configuración <code>samconfig.toml</code></h1>
+      <p class="lead">
+        Esta página documenta <strong>cómo construir y mantener</strong> el archivo <code>samconfig.toml</code> del repositorio
+        <code>tld-validador-proxy</code> (parámetros de <code>sam deploy</code>). El plano de recursos CloudFormation/SAM está en
+        <a href="deployment.html">Infraestructura template.yaml</a>.
+      </p>
+      <p class="lead text-muted small">
+        Detalle operativo de perfiles y overrides: qué perfiles declarar, qué claves van en <code>parameter_overrides</code> y cómo alinearlos
+        con los stacks existentes en <strong>Virginia (<code>us-east-1</code>)</strong> y <strong>Oregon (<code>us-west-2</code>)</strong>.
+      </p>
+
+      <h2 class="h5 mt-4">Estructura recomendada del archivo</h2>
+      <ol class="small">
+        <li><code>version = 0.1</code> (convención SAM CLI).</li>
+        <li>Un bloque <code>[nombre-perfil]</code> por ambiente y región (p. ej. <code>[dev]</code>, <code>[sandbox]</code>, <code>[sandbox-oregon]</code>, <code>[qa]</code>, <code>[qa-oregon]</code>, <code>[prod]</code>, <code>[prod-oregon]</code>).</li>
+        <li>Dentro de cada perfil: <code>[nombre-perfil.deploy.parameters]</code> con <code>stack_name</code>, <code>s3_bucket</code>, <code>s3_prefix</code>, <code>region</code>, <code>capabilities</code> y la cadena <code>parameter_overrides</code>.</li>
+        <li>Los overrides deben repetir <strong>exactamente</strong> los mismos IDs de red, EFS, access point y KMS que el servicio “hermano” con el que comparta VPC (ver tablas más abajo), cambiando solo lo propio del proxy si el <code>template.yaml</code> lo exige.</li>
+      </ol>
+
+      <div class="alert alert-primary border-primary shadow-sm" role="alert">
+        <h2 class="alert-heading h6 text-uppercase mb-2">Fuente de la verdad</h2>
+        <p class="mb-0">
+          Los valores tabulados provienen de los <code>samconfig.toml</code> de
+          <code>tld-api-p2m</code>, <code>tld-api-cuenta-nombre</code>, <code>tld-api-alias</code>, <code>tld-api-r2p</code> y
+          <code>tld-notificacion</code>. Las definiciones de parámetros (<code>VPCe</code>, <code>SecurityGroup</code>, etc.) están en cada
+          <code>template.yaml</code>. Ante cualquier duda, el orden correcto es: <strong>template del proxy</strong> (contrato) →
+          <strong>samconfig del repo de referencia</strong> (IDs reales por cuenta y región).
+        </p>
+      </div>
+
+      <h2 class="h4 mt-4">
+        Desarrollo (DEV)
+        <span class="badge bg-warning text-dark ms-2 align-middle">Virginia only — us-east-1</span>
+      </h2>
+      <p>
+        El flujo de trabajo estándar de <strong>DEV</strong> está definido <strong>solo en <code>us-east-1</code></strong>
+        (perfiles <code>[default]</code> y <code>[dev]</code> con <code>region = "us-east-1"</code>). Para
+        <strong><code>tld-validador-proxy</code></strong> no debe añadirse un perfil <code>dev-oregon</code>:
+        desplegar DEV en <code>us-west-2</code> con parámetros de Virginia provocaría errores de red o stacks huérfanos.
+      </p>
+
+      <div class="alert alert-info" role="alert">
+        La configuración de DEV presentada aquí es una <strong>propuesta de estandarización</strong> basada en la revisión de los repositorios existentes.
+        Se debe <strong>validar manualmente en la consola de AWS</strong> antes del primer despliegue del proxy.
+      </div>
+
+      <h3 class="h5 mt-4">Auditoría comparativa DEV (Virginia)</h3>
+      <p class="small">
+        Barrido de <code>samconfig.toml</code> en los cinco repositorios (perfiles <code>[default]</code> y <code>[dev]</code>, región
+        <code>us-east-1</code>). Los valores de <code>SecurityGroup</code> y las tres <code>Subnet*</code> son
+        <strong>idénticos en los diez bloques</strong> analizados. La única divergencia sistemática es el <code>VPCe</code> entre
+        <code>[default]</code> y <code>[dev]</code> en tres repos.
+      </p>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered table-striped table-hover align-middle bg-white">
+          <thead class="table-dark">
+            <tr>
+              <th>Repositorio</th>
+              <th><code>VPCe</code> en <code>[default]</code></th>
+              <th><code>VPCe</code> en <code>[dev]</code></th>
+              <th><code>SecurityGroup</code> (ambos perfiles)</th>
+              <th><code>Subnet1</code> / <code>Subnet2</code> / <code>Subnet3</code></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>tld-api-p2m</code></td>
+              <td><code>vpce-02604f22955f34464</code></td>
+              <td><code>vpce-03ecbc47b37cc7965</code></td>
+              <td rowspan="5" class="align-middle text-center"><code>sg-008d5796e8e35f872</code></td>
+              <td rowspan="5" class="align-middle small"><code>subnet-0093c5b90caef5c43</code><br><code>subnet-068ee4dcf3668fbe1</code><br><code>subnet-05f5130a337b5a6f8</code></td>
+            </tr>
+            <tr>
+              <td><code>tld-api-cuenta-nombre</code></td>
+              <td><code>vpce-02604f22955f34464</code></td>
+              <td><code>vpce-03ecbc47b37cc7965</code></td>
+            </tr>
+            <tr>
+              <td><code>tld-api-alias</code></td>
+              <td><code>vpce-03ecbc47b37cc7965</code></td>
+              <td><code>vpce-03ecbc47b37cc7965</code></td>
+            </tr>
+            <tr>
+              <td><code>tld-api-r2p</code></td>
+              <td><code>vpce-02604f22955f34464</code></td>
+              <td><code>vpce-03ecbc47b37cc7965</code></td>
+            </tr>
+            <tr>
+              <td><code>tld-notificacion</code></td>
+              <td><code>vpce-03ecbc47b37cc7965</code></td>
+              <td><code>vpce-03ecbc47b37cc7965</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="small text-muted">
+        <li><strong>Frecuencia <code>VPCe</code> en <code>[dev]</code>:</strong> <code>vpce-03ecbc47b37cc7965</code> en <strong>5/5</strong> repositorios.</li>
+        <li><strong>Frecuencia <code>VPCe</code> en <code>[default]</code>:</strong> <code>vpce-02604f22955f34464</code> en p2m, cuenta-nombre y r2p; <code>vpce-03ecbc47b37cc7965</code> en alias y notificacion.</li>
+        <li><strong>Riesgo operativo:</strong> quien ejecute <code>sam deploy</code> sin <code>--config-env dev</code> puede publicar contra un VPCe distinto al del resto del ecosistema DEV ya alineado en <code>[dev]</code>.</li>
+      </ul>
+
+      <div class="card border-success mb-4">
+        <div class="card-header bg-success text-white">Valores de referencia recomendados (proxy y estandarización DEV VA)</div>
+        <div class="card-body">
+          <p class="small mb-2">
+            Para que el proxy conviva con los microservicios que hoy despliegan con perfil <code>[dev]</code> y con <strong>alias</strong>
+            (orquestación) y <strong>cuenta-nombre</strong> (tráfico hacia validadores en DEV), use el conjunto que ya converge en esos perfiles:
+          </p>
+          <ul class="mb-0 font-monospace small">
+            <li><code>region</code> = <code>us-east-1</code></li>
+            <li><code>VPCe</code> = <code>vpce-03ecbc47b37cc7965</code></li>
+            <li><code>SecurityGroup</code> = <code>sg-008d5796e8e35f872</code></li>
+            <li><code>Subnet1</code> = <code>subnet-0093c5b90caef5c43</code> · <code>Subnet2</code> = <code>subnet-068ee4dcf3668fbe1</code> · <code>Subnet3</code> = <code>subnet-05f5130a337b5a6f8</code></li>
+          </ul>
+          <p class="small text-muted mt-2 mb-0">
+            Coinciden con <code>tld-api-cuenta-nombre</code> y <code>tld-api-alias</code> en <code>[dev]</code> (líneas de red). Remediación sugerida:
+            alinear también los <code>[default]</code> de p2m, cuenta-nombre y r2p a este <code>VPCe</code> cuando el equipo confirme en AWS que no hay dependencias legacy en <code>vpce-02604f22955f34464</code>.
+          </p>
+        </div>
+      </div>
+
+      <h3 class="h5 mt-4">Roadmap de estabilización DEV</h3>
+      <h4 class="h6 text-uppercase text-muted">Tareas críticas para funcionamiento en DEV</h4>
+      <p class="small">Lista de verificación previa a considerar DEV “operativo” para el proxy y el resto de lambdas en la misma VPC.</p>
+      <ul class="list-group list-group-flush border rounded mb-3">
+        <li class="list-group-item">
+          <span class="badge bg-primary rounded-pill me-2 align-middle">□</span>
+          <strong>Validación de conectividad:</strong> verificar que el security group de DEV permita tráfico hacia el access point de EFS
+          <code>fsap-03f16960146033100</code> en Virginia (puerto NFS 2049 según diseño de red; confirmar reglas salientes/entrantes y SG del mount target asociado al AP).
+        </li>
+        <li class="list-group-item">
+          <span class="badge bg-primary rounded-pill me-2 align-middle">□</span>
+          <strong>Sincronización de subnets:</strong> confirmar que las tres subnets del proxy coinciden con las donde residen el resto de microservicios DEV (las de la tabla anterior) y con los ENI de EFS en esa AZ/VPC.
+        </li>
+        <li class="list-group-item">
+          <span class="badge bg-primary rounded-pill me-2 align-middle">□</span>
+          <strong>Prueba de handshake (TLS / CA):</strong> despliegue de prueba inicial para validar que la Lambda del proxy puede leer archivos de CA bajo
+          <code>/mnt/tld-llaves/tld-ca/</code> en DEV (montaje EFS activo y permisos de lectura).
+        </li>
+        <li class="list-group-item">
+          <span class="badge bg-primary rounded-pill me-2 align-middle">□</span>
+          <strong>Investigación de endpoints:</strong> por el desorden en DEV, confirmar que la URL del validador de pruebas apunta al stage correcto de API Gateway (habitualmente <code>/dev</code>) y al mismo VPCe que las integraciones privadas.
+        </li>
+      </ul>
+
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered table-striped table-hover align-middle bg-white">
+          <thead class="table-dark">
+            <tr>
+              <th>Recurso</th>
+              <th>Valor en plantilla de proxy (DEV VA)</th>
+              <th>Notas</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>region</code></td><td><code>us-east-1</code></td><td>Perfil <code>[dev]</code> en SAM.</td></tr>
+            <tr><td><code>VPCe</code></td><td><code>vpce-03ecbc47b37cc7965</code></td><td>Ver recomendados arriba; no mezclar con <code>vpce-02604f22955f34464</code> sin validación.</td></tr>
+            <tr><td><code>SecurityGroup</code></td><td><code>sg-008d5796e8e35f872</code></td><td>Único en todos los repos DEV analizados.</td></tr>
+            <tr><td><code>Subnet1</code></td><td><code>subnet-0093c5b90caef5c43</code></td><td></td></tr>
+            <tr><td><code>Subnet2</code></td><td><code>subnet-068ee4dcf3668fbe1</code></td><td></td></tr>
+            <tr><td><code>Subnet3</code></td><td><code>subnet-05f5130a337b5a6f8</code></td><td></td></tr>
+            <tr><td><code>EFSResourceId</code> / <code>AccessPointId</code></td><td><em>Según template + consola</em></td><td>Los <code>samconfig</code> DEV actuales no suelen declarar EFS; el proxy debe añadirlos tras validar el AP (p. ej. comprobación de conectividad anterior).</td></tr>
+            <tr><td><code>KmsKeyId</code> (MRK)</td><td><em>Según template</em></td><td>Revisar <code>template.yaml</code> del proxy y overrides cuando existan llaves en DEV.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="small text-muted">
+        Nota histórica: <code>tld-api-p2m/samconfig.toml</code> incluye un perfil opcional <code>[dev-oregon]</code> (Oregon + EFS propios).
+        Ese perfil <strong>no</strong> forma parte del estándar DEV unificado del proxy ni de la mayoría de repos; no lo uses como plantilla del proxy salvo decisión explícita de plataforma.
+      </p>
+
+      <h2 class="h4 mt-5">Sandbox — Virginia vs Oregon</h2>
+      <p class="small text-muted mb-2">Referencia: <code>tld-api-p2m</code> perfiles <code>[sandbox]</code> y <code>[sandbox-oregon]</code> (mismos IDs en cuenta-nombre y R2P).</p>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered table-striped table-hover align-middle bg-white">
+          <thead class="table-dark">
+            <tr>
+              <th>Recurso</th>
+              <th>Virginia <code>us-east-1</code></th>
+              <th>Oregon <code>us-west-2</code></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>VPCe</code></td><td><code>vpce-00ef36bfb2706e3b7</code></td><td><code>vpce-0425c5ae5cadfb413</code></td></tr>
+            <tr><td><code>SecurityGroup</code></td><td><code>sg-0e9af23b6645d84df</code></td><td><code>sg-0632570ee4ab8c55f</code></td></tr>
+            <tr><td><code>Subnet1</code></td><td><code>subnet-0baba120b23a710cc</code></td><td><code>subnet-0bd757a9bcc0dcda5</code></td></tr>
+            <tr><td><code>Subnet2</code></td><td><code>subnet-073da6f0db6885407</code></td><td><code>subnet-0d69bfc85a349018d</code></td></tr>
+            <tr><td><code>Subnet3</code></td><td><code>subnet-052421100e0a15e95</code></td><td><code>subnet-0349e2932ba6bec22</code></td></tr>
+            <tr><td><code>EFSResourceId</code></td><td><code>fs-0c529f2d44aea1d2c</code></td><td><code>fs-05ae510717b5294f0</code></td></tr>
+            <tr><td><code>AccessPointId</code> (<code>fsap-*</code>)</td><td><code>fsap-0ad5ee26eef6a2472</code></td><td><code>fsap-023dac24183ef1de3</code></td></tr>
+            <tr><td><code>KmsKeyId</code> (MRK)</td><td colspan="2" class="text-center"><code>mrk-ed1fd19fbf574ff3a854d99bef63374d</code> (réplica multi-región)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="h4 mt-5">QA — Virginia vs Oregon</h2>
+      <p class="small text-muted mb-2">Red/VPC: <code>tld-api-p2m</code> <code>[qa]</code> / <code>[qa-oregon]</code>. <strong>EFS en QA Virginia difiere en Alias</strong> (ver alerta siguiente).</p>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered table-striped table-hover align-middle bg-white">
+          <thead class="table-dark">
+            <tr>
+              <th>Recurso</th>
+              <th>Virginia <code>us-east-1</code></th>
+              <th>Oregon <code>us-west-2</code></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>VPCe</code></td><td><code>vpce-02604f22955f34464</code></td><td><code>vpce-082221447d21774c0</code></td></tr>
+            <tr><td><code>SecurityGroup</code></td><td><code>sg-07a171ec1126de080</code></td><td><code>sg-0928b9ac57d332bf8</code></td></tr>
+            <tr><td><code>Subnet1</code></td><td><code>subnet-06d734e9c33be88a5</code></td><td><code>subnet-088f415fbe3be68f2</code></td></tr>
+            <tr><td><code>Subnet2</code></td><td><code>subnet-0207fb5c7b4fc3f1e</code></td><td><code>subnet-008e404bfb8a213e8</code></td></tr>
+            <tr><td><code>Subnet3</code></td><td><code>subnet-0e506123b33944eac</code></td><td><code>subnet-0eda642ed9fe1a924</code></td></tr>
+            <tr><td><code>EFSResourceId</code></td><td><code>fs-05ae510717b5294f0</code> <span class="text-muted">(P2M, cuenta-nombre, R2P)</span></td><td><code>fs-00d7e9128aa278b5d</code></td></tr>
+            <tr><td><code>AccessPointId</code></td><td><code>fsap-0f1fd55442328ddd2</code> <span class="text-muted">(P2M, cuenta-nombre, R2P)</span></td><td><code>fsap-0208b289424752c5f</code></td></tr>
+            <tr><td><code>KmsKeyId</code> (MRK)</td><td colspan="2" class="text-center"><code>mrk-6b96018bad1c409abcf93b050597aeee</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert alert-warning mt-3" role="alert">
+        <strong>Alias — QA Virginia (EFS distinto):</strong> en <code>tld-api-alias/samconfig.toml</code> perfil <code>[qa]</code>,
+        <code>EFSResourceID</code> es <code>fs-05ec32b692bb3b290</code> (mismo <code>fsap-0f1fd55442328ddd2</code> en el ARN pero file system distinto al de P2M/cuenta-nombre/R2P).
+        Al alinear <code>tld-validador-proxy</code> con Alias en QA VA, usar los IDs de <strong>Alias</strong>; si debe convivir con P2M en la misma VPC, validar con red/EFS cuál file system es el correcto.
+      </div>
+
+      <h2 class="h4 mt-5">Producción (<code>DeployEnvironment=tlrd-highway</code>) — Virginia vs Oregon</h2>
+
+      <div class="alert alert-danger border-danger shadow" role="alert">
+        <h3 class="alert-heading h6 text-uppercase mb-2">Auditoría crítica — tarea pendiente de investigación</h3>
+        <p class="mb-2">
+          <strong>No se ha cerrado</strong> qué conjunto de IDs de red es el único correcto y operativo para producción al cruzar
+          <code>tld-api-p2m</code>, <code>tld-api-alias</code> y <code>tld-api-cuenta-nombre</code> (y stacks relacionados) en
+          <strong>Virginia y Oregon</strong>.
+        </p>
+        <p class="mb-2">
+          En el workspace actual aparecen <strong>discrepancias documentadas en <code>SecurityGroup</code> y <code>Subnet3</code></strong>
+          entre repositorios y entre regiones (p. ej. Alias/notificacion frente a P2M/cuenta-nombre/R2P en prod Oregon; VPCe/SG distintos
+          en prod Virginia para notificacion frente a P2M). Usar un ID incorrecto puede impedir el tráfico hacia el VPCe, violar políticas
+          de seguridad de subred o montar EFS en un contexto de red inválido.
+        </p>
+        <p class="mb-0 fw-semibold">
+          El <code>tld-validador-proxy</code> <strong>no debe desplegarse en producción</strong> hasta que Arquitectura / Red / Seguridad
+          verifiquen en AWS cuál es el <strong>SecurityGroup</strong> y la <strong>Subnet3</strong> (y el resto del trío VPCe/subnets)
+          funcionalmente válidos para el propósito del proxy, y esa decisión quede reflejada en un único bloque de overrides auditado.
+        </p>
+      </div>
+
+      <p class="small text-muted mb-2">Valores extraídos de <code>samconfig.toml</code> (referencia): <code>tld-api-p2m</code> <code>[prod]</code> / <code>[prod-oregon]</code>. La tabla resume lo registrado hoy; no sustituye la verificación anterior.</p>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered table-striped table-hover align-middle bg-white">
+          <thead class="table-dark">
+            <tr>
+              <th>Recurso</th>
+              <th>Virginia <code>us-east-1</code></th>
+              <th>Oregon <code>us-west-2</code></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>VPCe</code></td><td><code>vpce-05fd27576a4f363ff</code></td><td><code>vpce-060f0db9e16d13ea3</code></td></tr>
+            <tr><td><code>SecurityGroup</code></td><td><code>sg-013e8ae11b9da29c0</code> <span class="badge bg-secondary">P2M / cuenta / R2P</span><br><code>sg-0943ddd3307f78bc6</code> <span class="badge bg-secondary">Alias / notificacion</span></td><td><code>sg-0020c5cbea750ad63</code> <span class="badge bg-secondary">P2M / cuenta / R2P</span><br><code>sg-07cb533f2a71d11db</code> <span class="badge bg-secondary">Alias / notificacion</span></td></tr>
+            <tr><td><code>Subnet1</code></td><td><code>subnet-00f7c0df721dcfdc4</code></td><td><code>subnet-0c03d3e13e5de8610</code></td></tr>
+            <tr><td><code>Subnet2</code></td><td><code>subnet-06e450fb4c4ea4e65</code></td><td><code>subnet-07dd5ba31d52b7864</code></td></tr>
+            <tr><td><code>Subnet3</code></td><td><code>subnet-02a075226b5436af3</code></td><td><code>subnet-024199d69953e1a25</code> <span class="badge bg-secondary">P2M / cuenta / R2P</span><br><code>subnet-03beb33a17aa75827</code> <span class="badge bg-secondary">Alias / notificacion</span></td></tr>
+            <tr><td><code>EFSResourceId</code></td><td><code>fs-0b6ad2845cfc0aeb5</code></td><td><code>fs-0c09b26abdda8bbe1</code></td></tr>
+            <tr><td><code>AccessPointId</code></td><td><code>fsap-09cc546a0253d737f</code></td><td><code>fsap-01ca600b20f7a08d0</code></td></tr>
+            <tr><td><code>KmsKeyId</code> (MRK)</td><td colspan="2" class="text-center"><code>mrk-abb71650ede04d5cac17cc4297853d88</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert alert-warning mt-3" role="alert">
+        <strong>Detalle — Subnet3 en prod Oregon (misma divergencia citada en la auditoría):</strong>
+        <ul class="mb-0 mt-2 small">
+          <li><code>tld-api-p2m</code>, <code>tld-api-cuenta-nombre</code>, <code>tld-api-r2p</code>: <code>subnet-024199d69953e1a25</code>.</li>
+          <li><code>tld-api-alias</code>, <code>tld-notificacion</code>: <code>subnet-03beb33a17aa75827</code> en <code>[prod-oregon]</code>.</li>
+        </ul>
+      </div>
+
+      <div class="alert alert-secondary mt-2" role="alert">
+        <strong>Notificacion — Prod Virginia:</strong> <code>tld-notificacion/samconfig.toml</code> <code>[prod]</code> usa
+        <code>VPCe = vpce-02604f22955f34464</code> y <code>SecurityGroup = sg-0943ddd3307f78bc6</code>, distinto de P2M prod Virginia
+        (<code>vpce-05fd27576a4f363ff</code>, <code>sg-013e8ae11b9da29c0</code>). El proxy debe seguir el mismo par VPCe/SG que el stack con el que deba integrarse en cada entorno.
+      </div>
+
+      <h2 class="h4 mt-5">Buckets SAM (recordatorio)</h2>
+      <ul class="small">
+        <li>DEV VA: <code>aws-sam-cli-managed-default-samclisourcebucket-1q7e3sjlb1rrf</code></li>
+        <li>Sandbox VA: <code>aws-sam-cli-managed-default-sandbox-virginia</code> · Sandbox OR: <code>aws-sam-cli-managed-default-sandbox</code></li>
+        <li>QA VA: <code>aws-sam-cli-managed-default-samclisourcebucket-18rm93iafqfyd</code> · QA OR: <code>aws-sam-cli-managed-default-samclisourcebucket-ud8dvbixkoal</code></li>
+        <li>Prod VA: <code>aws-sam-cli-managed-default-samclisourcebucket-vds234g4vu9u</code> · Prod OR: <code>aws-sam-cli-managed-default-samclisourcebucket-cytsc7dtvb49</code></li>
+      </ul>
+
+      <h2 class="h4 mt-5">Propuesta de <code>samconfig.toml</code> para el Proxy</h2>
+      <p class="small text-muted">
+        Generado a partir de <code>tld-api-alias/samconfig.toml</code> (mismos <code>s3_bucket</code> por perfil). Red, EFS y KMS siguen los overrides de Alias;
+        en <strong>producción Virginia y Oregon</strong>, <code>SecurityGroup</code> y <code>Subnet3</code> son estrictamente los de Alias, con comentario de auditoría.
+        Los nombres de parámetro en <code>parameter_overrides</code> dependen del <code>template.yaml</code>: los ejemplos siguientes siguen P2M/cuenta-nombre (<code>KmsKeyId</code>, <code>EFSResourceId</code>, <code>AccessPointId</code>).
+        Si adoptan la plantilla de <a href="deployment.html">Infraestructura template.yaml</a>, alinear overrides con sus parámetros (p. ej. <code>KmsKeyArn</code> como ARN completo en lugar de <code>KmsKeyId</code>).
+      </p>
+      <div class="border border-secondary rounded overflow-hidden bg-dark wiki-copy-block wiki-code-scroll">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-bottom border-secondary">
+          <span class="text-light-50 small text-white-50">samconfig.toml</span>
+          <button type="button" class="btn btn-sm btn-outline-light wiki-copy-btn" data-wiki-copy-for="samconfig-proxy-text" aria-label="Copiar contenido de samconfig.toml">Copiar Configuración</button>
+        </div>
+        <pre class="wiki-samconfig-pre mb-0 p-3 text-light bg-dark rounded-0"><code id="samconfig-proxy-text">version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "tld-validador-proxy"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1q7e3sjlb1rrf"
+s3_prefix = "tld-validador-proxy"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+parameter_overrides = "DeployEnvironment=\"dev\"  VPCe=\"vpce-03ecbc47b37cc7965\" SecurityGroup=\"sg-008d5796e8e35f872\" Subnet1=\"subnet-0093c5b90caef5c43\" Subnet2=\"subnet-068ee4dcf3668fbe1\" Subnet3=\"subnet-05f5130a337b5a6f8\""
+
+[dev]
+[dev.deploy]
+[dev.deploy.parameters]
+stack_name = "tld-validador-proxy"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1q7e3sjlb1rrf"
+s3_prefix = "tld-validador-proxy"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+parameter_overrides = "DeployEnvironment=\"dev\"  VPCe=\"vpce-03ecbc47b37cc7965\" SecurityGroup=\"sg-008d5796e8e35f872\" Subnet1=\"subnet-0093c5b90caef5c43\" Subnet2=\"subnet-068ee4dcf3668fbe1\" Subnet3=\"subnet-05f5130a337b5a6f8\""
+
+[sandbox]
+[sandbox.deploy]
+[sandbox.deploy.parameters]
+stack_name = "tld-validador-proxy"
+s3_bucket = "aws-sam-cli-managed-default-sandbox-virginia"
+s3_prefix = "tld-validador-proxy"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "DeployEnvironment=\"sandbox\"  VPCe=\"vpce-00ef36bfb2706e3b7\" SecurityGroup=\"sg-0e9af23b6645d84df\" Subnet1=\"subnet-0baba120b23a710cc\" Subnet2=\"subnet-073da6f0db6885407\" Subnet3=\"subnet-052421100e0a15e95\" KmsKeyId=\"mrk-ed1fd19fbf574ff3a854d99bef63374d\" AccessPointId=\"fsap-0ad5ee26eef6a2472\" EFSResourceId=\"fs-0c529f2d44aea1d2c\""
+
+[sandbox-oregon]
+[sandbox-oregon.deploy]
+[sandbox-oregon.deploy.parameters]
+stack_name = "tld-validador-proxy"
+s3_bucket = "aws-sam-cli-managed-default-sandbox"
+s3_prefix = "tld-validador-proxy"
+region = "us-west-2"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "DeployEnvironment=\"sandbox\"  VPCe=\"vpce-0425c5ae5cadfb413\" SecurityGroup=\"sg-0632570ee4ab8c55f\" Subnet1=\"subnet-0bd757a9bcc0dcda5\" Subnet2=\"subnet-0d69bfc85a349018d\" Subnet3=\"subnet-0349e2932ba6bec22\" KmsKeyId=\"mrk-ed1fd19fbf574ff3a854d99bef63374d\" AccessPointId=\"fsap-023dac24183ef1de3\" EFSResourceId=\"fs-05ae510717b5294f0\""
+
+[qa]
+[qa.deploy]
+[qa.deploy.parameters]
+stack_name = "tld-validador-proxy"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-18rm93iafqfyd"
+s3_prefix = "tld-validador-proxy"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "DeployEnvironment=\"qa\"  VPCe=\"vpce-02604f22955f34464\" SecurityGroup=\"sg-07a171ec1126de080\" Subnet1=\"subnet-06d734e9c33be88a5\" Subnet2=\"subnet-0207fb5c7b4fc3f1e\" Subnet3=\"subnet-0e506123b33944eac\" KmsKeyId=\"mrk-faaa53fe93c640b593edd3941ae99b90\" AccessPointId=\"fsap-0f1fd55442328ddd2\" EFSResourceId=\"fs-05ec32b692bb3b290\""
+
+[qa-oregon]
+[qa-oregon.deploy]
+[qa-oregon.deploy.parameters]
+stack_name = "tld-validador-proxy"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-ud8dvbixkoal"
+s3_prefix = "tld-validador-proxy"
+region = "us-west-2"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "DeployEnvironment=\"qa\" VPCe=\"vpce-082221447d21774c0\" SecurityGroup=\"sg-0928b9ac57d332bf8\" Subnet1=\"subnet-088f415fbe3be68f2\" Subnet2=\"subnet-008e404bfb8a213e8\" Subnet3=\"subnet-0eda642ed9fe1a924\" KmsKeyId=\"mrk-faaa53fe93c640b593edd3941ae99b90\" AccessPointId=\"fsap-0208b289424752c5f\" EFSResourceId=\"fs-00d7e9128aa278b5d\""
+
+[prod]
+[prod.deploy]
+[prod.deploy.parameters]
+stack_name = "tld-validador-proxy"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-vds234g4vu9u"
+s3_prefix = "tld-validador-proxy"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+# Valor temporal basado en tld-api-alias (Investigación en curso)
+parameter_overrides = "DeployEnvironment=\"tlrd-highway\"  VPCe=\"vpce-05fd27576a4f363ff\" SecurityGroup=\"sg-0943ddd3307f78bc6\" Subnet1=\"subnet-00f7c0df721dcfdc4\" Subnet2=\"subnet-06e450fb4c4ea4e65\" Subnet3=\"subnet-02a075226b5436af3\" KmsKeyId=\"mrk-abb71650ede04d5cac17cc4297853d88\" AccessPointId=\"fsap-09cc546a0253d737f\" EFSResourceId=\"fs-0b6ad2845cfc0aeb5\""
+
+[prod-oregon]
+[prod-oregon.deploy]
+[prod-oregon.deploy.parameters]
+stack_name = "tld-validador-proxy"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-cytsc7dtvb49"
+s3_prefix = "tld-validador-proxy"
+region = "us-west-2"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+# Valor temporal basado en tld-api-alias (Investigación en curso)
+parameter_overrides = "DeployEnvironment=\"tlrd-highway\" VPCe=\"vpce-060f0db9e16d13ea3\" SecurityGroup=\"sg-07cb533f2a71d11db\" Subnet1=\"subnet-0c03d3e13e5de8610\" Subnet2=\"subnet-07dd5ba31d52b7864\" Subnet3=\"subnet-03beb33a17aa75827\" KmsKeyId=\"mrk-abb71650ede04d5cac17cc4297853d88\" AccessPointId=\"fsap-01ca600b20f7a08d0\" EFSResourceId=\"fs-0c09b26abdda8bbe1\""
+</code></pre>
+      </div>
+      <p class="small text-muted mt-3 mb-0">
+        Este archivo debe colocarse en la <strong>raíz</strong> del nuevo repositorio <code>tld-validador-proxy</code> para habilitar los despliegues vía SAM CLI
+        (<code>sam deploy --config-env &lt;perfil&gt;</code>). Si el navegador bloquea el portapapeles (p. ej. origen <code>file://</code>), abre la wiki desde un servidor HTTP local o pega manualmente.
+      </p>
+
+      <p class="text-muted small mt-4 mb-0">Última extracción desde <code>samconfig.toml</code> en el workspace. Tras cambios en AWS, actualizar esta wiki y los overrides del proxy en el mismo commit.</p>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

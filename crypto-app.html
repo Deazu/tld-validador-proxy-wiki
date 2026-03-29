@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tld-validador-proxy — Cifrado (aplicación)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/wiki.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <script defer src="js/wiki-init.js"></script>
+  <script defer src="js/menu-sync.js"></script>
+  <script defer src="js/wiki-chrome.js"></script>
+</head>
+<body class="wiki-body bg-light">
+  <div class="wiki-layout">
+    <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
+      <div class="wiki-sidebar-inner p-3 flex-grow-1 overflow-auto">
+        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-1 px-2">
+          <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
+          <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
+        </a>
+        <nav class="nav flex-column wiki-sidebar-nav pt-2" aria-label="Navegación principal">
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🚀</span> PROYECTO</div>
+          <a class="nav-link wiki-nav-link" href="index.html"><span class="wiki-nav-ico" aria-hidden="true">🛡️</span> Misión</a>
+          <a class="nav-link wiki-nav-link" href="flow.html"><span class="wiki-nav-ico" aria-hidden="true">📊</span> Flujo General</a>
+          <a class="nav-link wiki-nav-link" href="data-dictionary.html"><span class="wiki-nav-ico" aria-hidden="true">📖</span> Diccionario de Datos</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">📜</span> INFRAESTRUCTURA</div>
+          <a class="nav-link wiki-nav-link" href="network.html"><span class="wiki-nav-ico" aria-hidden="true">📋</span> samconfig.toml</a>
+          <a class="nav-link wiki-nav-link" href="deployment.html"><span class="wiki-nav-ico" aria-hidden="true">📄</span> template.yaml</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🔐</span> SEGURIDAD</div>
+          <a class="nav-link wiki-nav-link active" href="crypto-app.html"><span class="wiki-nav-ico" aria-hidden="true">🔑</span> Cifrado App</a>
+          <a class="nav-link wiki-nav-link wiki-nav-link-parent" href="crypto-transport.html#diagrama-interaccion"><span class="wiki-nav-ico" aria-hidden="true">🔒</span> Transporte mTLS/CRL</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#diagrama-interaccion">Diagrama de secuencia</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#codigo-fuente">Código fuente (módulos)</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#variables-efs">Variables y EFS</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#rendimiento-lambda">Rendimiento Lambda</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#seguridad-cumplimiento">Seguridad</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#depuracion-troubleshooting">Depuración</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#evolucion-proximos-pasos">Evolución</a>
+          <a class="nav-link wiki-nav-link" href="connectivity-telered.html"><span class="wiki-nav-ico" aria-hidden="true">🌐</span> Conectividad Telered</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🛠️</span> COMPONENTES</div>
+          <a class="nav-link wiki-nav-link" href="identity.html"><span class="wiki-nav-ico" aria-hidden="true">👤</span> Identidad (Canal)</a>
+          <a class="nav-link wiki-nav-link" href="logger.html"><span class="wiki-nav-ico" aria-hidden="true">📝</span> Logger</a>
+        </nav>
+      </div>
+    </aside>
+    <main class="wiki-content flex-grow-1">
+      <div class="wiki-mobile-bar d-md-none mb-3">
+        <div class="dropdown">
+          <button class="btn btn-wiki-menu dropdown-toggle w-100 rounded-pill py-2" type="button" data-bs-toggle="dropdown">Menú wiki</button>
+          <ul class="dropdown-menu w-100 shadow border-0">
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🚀</span> PROYECTO</h6></li>
+            <li><a class="dropdown-item" href="index.html">🛡️ Misión</a></li>
+            <li><a class="dropdown-item" href="flow.html">📊 Flujo General</a></li>
+            <li><a class="dropdown-item" href="data-dictionary.html">📖 Diccionario de Datos</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">📜</span> INFRAESTRUCTURA</h6></li>
+            <li><a class="dropdown-item" href="network.html">📋 samconfig.toml</a></li>
+            <li><a class="dropdown-item" href="deployment.html">📄 template.yaml</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🔐</span> SEGURIDAD</h6></li>
+            <li><a class="dropdown-item active" href="crypto-app.html">🔑 Cifrado App</a></li>
+            <li><a class="dropdown-item" href="crypto-transport.html#diagrama-interaccion">🔒 Transporte mTLS/CRL</a></li>
+            <li><a class="dropdown-item" href="connectivity-telered.html">🌐 Conectividad Telered</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🛠️</span> COMPONENTES</h6></li>
+            <li><a class="dropdown-item" href="identity.html">👤 Identidad (Canal)</a></li>
+            <li><a class="dropdown-item" href="logger.html">📝 Logger</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="text-muted small mb-2"><a href="crypto-transport.html#diagrama-interaccion">Túnel de Confianza (Transporte)</a> — TLS, CA y CRL</p>
+      <h1 class="h2 mb-3">Cifrado híbrido en <code>operacionesPaquete.js</code></h1>
+      <p>
+        El módulo (p. ej. en <code>tld-api-alias/lambdas/alias/lib/operacionesPaquete.js</code>) implementa cifrado híbrido:
+        <strong>RSA-OAEP-SHA256</strong> para encapsular la llave simétrica (material en EFS o vía KMS según <code>origen</code>) y un esquema simétrico
+        (<code>aes-256-gcm</code> o <code>aes-256-cbc</code>, entre otros) para el volumen de datos. El tercer parámetro de las funciones públicas,
+        <code>modo</code>, es el nombre del algoritmo simétrico que Node usa en <code>createCipheriv</code> / <code>createDecipheriv</code>.
+      </p>
+
+        <div class="wiki-mermaid-wrap shadow-sm mb-4">
+          <pre class="mermaid">flowchart TD
+    M[modo desde Dynamo algoritmoCifrado] --> G{modo es aes-256-gcm}
+    G -->|si| A[Variante A GCM auth tag]
+    G -->|no| B[Variante B CBC u otro modo Node]
+    A --> P[Paquete concatenado hex]
+    B --> Q[Paquete iv.RSA.datos]</pre>
+        </div>
+
+      <h2 class="h5 mt-4">Variante A — <code>aes-256-gcm</code> (GCM)</h2>
+      <ul>
+        <li>Se elige al <strong>cifrar</strong> cuando <code>modo === "aes-256-gcm"</code> (p. ej. <code>resolverVarianteParaModo</code>).</li>
+        <li><strong>Confidencialidad e integridad:</strong> GCM aporta cifrado autenticado; el <strong>auth tag</strong> viaja dentro del material simétrico del paquete.</li>
+        <li><strong>Layout de salida:</strong> un bloque RSA en hex (longitud fija al inicio) <strong>concatenado</strong> sin separador de puntos con el resto del contenido simétrico en hex.</li>
+        <li><strong>Apertura:</strong> si el string del paquete <strong>no</strong> sigue el patrón de tres segmentos separados por <code>.</code> propio de la variante B, se interpreta como variante A.</li>
+      </ul>
+
+      <h2 class="h5 mt-4">Variante B — típicamente <code>aes-256-cbc</code> (CBC)</h2>
+      <ul>
+        <li>Cualquier <code>modo</code> distinto de <code>aes-256-gcm</code> usa la variante B al cifrar.</li>
+        <li><strong>Layout:</strong> tres segmentos hexadecimales separados por puntos: <code>iv.bloqueRSA.datos</code> (IV explícito, bloque que encapsula la llave simétrica con RSA, ciphertext).</li>
+        <li><strong>Integridad:</strong> CBC clásico no incluye tag de autenticación como GCM; la integridad del mensaje depende del diseño del protocolo aguas arriba.</li>
+        <li><strong>Apertura:</strong> la presencia de <code>.</code> en la forma esperada orienta a variante B; el <code>modo</code> sigue siendo <strong>obligatorio</strong> para inicializar el decipher.</li>
+      </ul>
+
+      <h2 class="h5 mt-4">Error crítico: llamar <code>cerrarPaquete</code> con solo dos parámetros</h2>
+      <p>
+        La firma del módulo es <code>cerrarPaquete(origen, contenido, modo)</code> (y análoga para abrir con <code>origen</code>, paquete y <code>modo</code>).
+        En <code>tld-api-alias/lambdas/alias/lib/notificar.js</code> aparecen invocaciones <strong>incompletas</strong>, por ejemplo
+        <code>cerrarPaquete(llaveCifrado, peticionEstructura)</code>: falta el tercer argumento <code>modo</code>.
+      </p>
+      <div class="alert alert-danger" role="alert">
+        Sin <code>modo</code>, el motor simétrico no sabe qué algoritmo y layout aplicar. Eso produce fallos del tipo <code>Modo inválido</code>,
+        comportamiento indefinido o paquetes que el <em>remote endpoint</em> no puede interpretar. Es un defecto de <strong>severidad alta</strong> porque rompe el contrato
+        criptográfico sin fallar siempre de forma explícita en compilación.
+      </div>
+      <p>
+        En cambio, <code>app.js</code> de alias usa correctamente
+        <code>cerrarPaquete(canalEmisor.llaveCifrado, respuesta, canalEmisor.algoritmoCifrado)</code>: el tercer parámetro proviene del registro de canal.
+      </p>
+
+      <h2 class="h5 mt-4">Cómo el proxy corrige el contrato</h2>
+      <p>
+        El proxy <strong>no</strong> acepta el algoritmo simétrico desde el cuerpo del evento del invocador (evita sustitución maliciosa o incoherencia).
+        Tras resolver el canal validador en DynamoDB, lee <strong><code>algoritmoCifrado</code></strong> del item (el mismo campo que usa cuenta-nombre al llamar a la capa de cifrado) y lo pasa como tercer argumento:
+      </p>
+      <pre class="bg-dark text-light p-3 rounded small"><code>operacionesPaquete.cerrarPaquete(
+  origen,                    // KMS / PEM según llave del validador
+  dataPlana,
+  registroValidador.algoritmoCifrado
+)</code></pre>
+      <p class="small text-muted mb-0">Así cada petición cumple el contrato de tres parámetros y respeta el algoritmo gobernado por datos, no por el cliente del proxy.</p>
+
+      <h2 class="h5 mt-4">Flujo de encapsulamiento RSA de la llave simétrica</h2>
+      <ol>
+        <li><strong>Generación:</strong> se genera material simétrico aleatorio (llave y, según el modo, IV o nonces exigidos por GCM/CBC).</li>
+        <li><strong>Cifrado del payload:</strong> el JSON o estructura de negocio se cifra con AES en el <code>modo</code> indicado (GCM o CBC, etc.).</li>
+        <li><strong>Encapsulado RSA:</strong> la llave simétrica (y metadatos necesarios según la variante) se cifra con <strong>RSA-OAEP-SHA256</strong> usando la llave pública del destinatario (certificado / PEM en EFS o material referenciado por KMS según <code>origen</code>).</li>
+        <li><strong>Empaquetado:</strong> el resultado se serializa en hex según la variante A (prefijo RSA + tramo simétrico continuo) o B (<code>iv.RSA.datos</code> con puntos).</li>
+      </ol>
+      <p>
+        El destinatario invierte el orden: RSA-OAEP para recuperar la llave simétrica, luego <code>createDecipheriv</code> con el <code>modo</code> correcto.
+        Si el <code>modo</code> no coincide entre emisor y receptor, el descifrado falla aunque RSA sea correcto.
+      </p>
+
+      <div class="alert alert-secondary mt-4">
+        El proxy debe obtener <code>modo</code> solo desde <strong><code>algoritmoCifrado</code></strong> en DynamoDB para el canal correspondiente, nunca desde el payload del invocador.
+      </div>
+
+      <h2 class="h5 mt-5">Ejemplo de evento hacia el proxy (sin <code>modo</code>)</h2>
+      <pre class="bg-dark text-light p-3 rounded"><code>{
+  "idCanalEmisor": "1005",
+  "idCanalValidador": "1000",
+  "metodo": "0001",
+  "dataPlana": { "idPeticion": "…", "metodo": "0001", "solicitudes": [] }
+}</code></pre>
+
+      <p class="text-muted small mt-5">
+        Documentación de cifrado de <strong>aplicación</strong> (payload). Flujo extremo a extremo: <a href="flow.html">Flujo General</a>.
+        Túnel TLS (CA, CRL): <a href="crypto-transport.html#diagrama-interaccion">Transporte mTLS/CRL</a>. No sustituye modelo de amenazas formal ni pentest.
+      </p>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

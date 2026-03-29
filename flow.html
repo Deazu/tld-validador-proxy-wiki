@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tld-validador-proxy — Flujo General</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/wiki.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <script defer src="js/wiki-init.js"></script>
+  <script defer src="js/menu-sync.js"></script>
+  <script defer src="js/wiki-chrome.js"></script>
+</head>
+<body class="wiki-body bg-light">
+  <div class="wiki-layout">
+    <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
+      <div class="wiki-sidebar-inner p-3 flex-grow-1 overflow-auto">
+        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-1 px-2">
+          <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
+          <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
+        </a>
+        <nav class="nav flex-column wiki-sidebar-nav pt-2" aria-label="Navegación principal">
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🚀</span> PROYECTO</div>
+          <a class="nav-link wiki-nav-link" href="index.html"><span class="wiki-nav-ico" aria-hidden="true">🛡️</span> Misión</a>
+          <a class="nav-link wiki-nav-link active" href="flow.html"><span class="wiki-nav-ico" aria-hidden="true">📊</span> Flujo General</a>
+          <a class="nav-link wiki-nav-link" href="data-dictionary.html"><span class="wiki-nav-ico" aria-hidden="true">📖</span> Diccionario de Datos</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">📜</span> INFRAESTRUCTURA</div>
+          <a class="nav-link wiki-nav-link" href="network.html"><span class="wiki-nav-ico" aria-hidden="true">📋</span> samconfig.toml</a>
+          <a class="nav-link wiki-nav-link" href="deployment.html"><span class="wiki-nav-ico" aria-hidden="true">📄</span> template.yaml</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🔐</span> SEGURIDAD</div>
+          <a class="nav-link wiki-nav-link" href="crypto-app.html"><span class="wiki-nav-ico" aria-hidden="true">🔑</span> Cifrado App</a>
+          <a class="nav-link wiki-nav-link wiki-nav-link-parent" href="crypto-transport.html#diagrama-interaccion"><span class="wiki-nav-ico" aria-hidden="true">🔒</span> Transporte mTLS/CRL</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#diagrama-interaccion">Diagrama de secuencia</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#codigo-fuente">Código fuente (módulos)</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#variables-efs">Variables y EFS</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#rendimiento-lambda">Rendimiento Lambda</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#seguridad-cumplimiento">Seguridad</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#depuracion-troubleshooting">Depuración</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#evolucion-proximos-pasos">Evolución</a>
+          <a class="nav-link wiki-nav-link" href="connectivity-telered.html"><span class="wiki-nav-ico" aria-hidden="true">🌐</span> Conectividad Telered</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🛠️</span> COMPONENTES</div>
+          <a class="nav-link wiki-nav-link" href="identity.html"><span class="wiki-nav-ico" aria-hidden="true">👤</span> Identidad (Canal)</a>
+          <a class="nav-link wiki-nav-link" href="logger.html"><span class="wiki-nav-ico" aria-hidden="true">📝</span> Logger</a>
+        </nav>
+      </div>
+    </aside>
+    <main class="wiki-content flex-grow-1">
+      <div class="wiki-mobile-bar d-md-none mb-3">
+        <div class="dropdown">
+          <button class="btn btn-wiki-menu dropdown-toggle w-100 rounded-pill py-2" type="button" data-bs-toggle="dropdown">Menú wiki</button>
+          <ul class="dropdown-menu w-100 shadow border-0">
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🚀</span> PROYECTO</h6></li>
+            <li><a class="dropdown-item" href="index.html">🛡️ Misión</a></li>
+            <li><a class="dropdown-item active" href="flow.html">📊 Flujo General</a></li>
+            <li><a class="dropdown-item" href="data-dictionary.html">📖 Diccionario de Datos</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">📜</span> INFRAESTRUCTURA</h6></li>
+            <li><a class="dropdown-item" href="network.html">📋 samconfig.toml</a></li>
+            <li><a class="dropdown-item" href="deployment.html">📄 template.yaml</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🔐</span> SEGURIDAD</h6></li>
+            <li><a class="dropdown-item" href="crypto-app.html">🔑 Cifrado App</a></li>
+            <li><a class="dropdown-item" href="crypto-transport.html#diagrama-interaccion">🔒 Transporte mTLS/CRL</a></li>
+            <li><a class="dropdown-item" href="connectivity-telered.html">🌐 Conectividad Telered</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🛠️</span> COMPONENTES</h6></li>
+            <li><a class="dropdown-item" href="identity.html">👤 Identidad (Canal)</a></li>
+            <li><a class="dropdown-item" href="logger.html">📝 Logger</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="wiki-content-inner p-4 p-lg-5">
+        <nav class="wiki-inpage-toc small mb-4" aria-label="En esta página">
+          <div class="fw-semibold mb-2">En esta página</div>
+          <ul class="mb-0">
+            <li><a href="#diagrama-secuencia">Diagrama de secuencia</a></li>
+            <li><a href="#paso-a-paso">Explicación por fase</a></li>
+            <li><a href="#pies-de-plomo">Estrategia «pies de plomo»</a></li>
+          </ul>
+        </nav>
+
+        <h1 class="h2 mb-3">Flujo General</h1>
+        <p class="lead text-muted">
+          Ciclo de vida de una petición al <code>tld-validador-proxy</code>: desde el cliente interno hasta el endpoint remoto del validador,
+          pasando por sanitización de logs, resolución de canal en DynamoDB, cifrado híbrido y túnel TLS con política de confianza (CA/CRL).
+        </p>
+
+        <section id="diagrama-secuencia" class="mt-4">
+          <h2 class="h4">Diagrama de secuencia detallado</h2>
+          <p class="small text-muted">
+            Vista lógica generada con <strong>Mermaid</strong>. <strong>mTLS</strong> aplica cuando el <em>remote endpoint</em> exige certificado de cliente; la base actual es TLS con CA en EFS y CRL previa al body (extensible a mTLS).
+          </p>
+          <div class="wiki-mermaid-wrap shadow-sm">
+            <pre class="mermaid">sequenceDiagram
+    autonumber
+    participant Client as "Cliente interno"
+    participant Handler as "Proxy Handler"
+    participant Log as "Logger sanitize"
+    participant Canal as "Canal DynamoDB"
+    participant Crypto as OperacionesPaquete
+    participant Http as HttpClient
+    participant Target as "Remote endpoint"
+
+    Client->>+Handler: POST idCanalValidador metodo dataPlana
+    Handler->>+Log: Print meta sanitizada
+    Note right of Log: PRINT_LOGS on y DENY_KEYS
+    Log-->>-Handler: ok
+    Handler->>+Canal: getCanal Query llaves operaciones
+    Canal-->>-Handler: urlValidador origen algoritmoCifrado
+    Handler->>Crypto: cerrarPaquete origen body modo desde Dynamo
+    Note right of Crypto: GCM si aes-256-gcm si no variante CBC
+    Crypto-->>Handler: paquete cifrado
+    Handler->>+Http: requestSecure URL y body
+    Http->>Http: TLS CA EFS CRL pre body
+    Note right of Http: opc mTLS si el target lo exige
+    Http->>+Target: HTTPS POST
+    Target-->>-Http: respuesta
+    Http-->>-Handler: status y body
+    Handler-->>-Client: respuesta HTTP API</pre>
+          </div>
+        </section>
+
+        <section id="paso-a-paso" class="mt-5">
+          <h2 class="h4">Explicación exhaustiva por participante</h2>
+
+          <h3 class="h5 mt-4">1. Cliente → Proxy Handler</h3>
+          <p>
+            El invocador entrega identificadores de negocio y <code>dataPlana</code>; <strong>no</strong> envía el modo AES ni rutas de llaves.
+            El handler valida forma del evento, genera o propaga <code>correlationId</code> y prepara la orquestación.
+          </p>
+
+          <h3 class="h5 mt-4">2. Logger (<code>Print</code> / <code>sanitize</code>)</h3>
+          <p>
+            Desde el <strong>primer</strong> log útil, el proxy debe usar el módulo de logging refactor (<code>logger.js</code>): solo escribe en consola si
+            <code>process.env.PRINT_LOGS === "on"</code> (criterio estricto documentado en <a href="logger.html">Logger</a>).
+            Cada argumento pasa por <code>sanitize</code>: recorre objetos, <strong>enmascara claves en <code>DENY_KEYS</code></strong> (p. ej. <code>token</code>, <code>llavedescifrado</code>, <code>llavecifrado</code>),
+            trunca cadenas largas y evita volcar buffers completos. Así un error temprano no filtra Dynamo ni payloads en CloudWatch.
+          </p>
+          <div class="alert alert-info small mb-0">
+            Alinear con <code>operacionesPaquete.js</code>: allí <code>PRINT_LOGS</code> puede evaluarse con <code>.toLowerCase()</code>; en el proxy conviene una política única documentada para operaciones.
+          </div>
+
+          <h3 class="h5 mt-4">3. Canal (DynamoDB + EFS / KMS)</h3>
+          <p>
+            <code>getCanal(idCanalValidador)</code> resuelve la fila en <code>tld-validador-canal</code> (y tablas satélite). Debe producir, entre otros:
+            <code>urlValidador</code> (HTTPS destino), referencias a <code>llaveCifrado</code> (ARN KMS o id hacia <code>tld-validador-canal-llave</code>),
+            <code>algoritmoCifrado</code> para el motor simétrico, y <code>operaciones</code> para validar <code>metodo</code>.
+            Si la llave es local, el registro de llave aporta típicamente <code>archivo</code> relativo a <code>/mnt/tld-llaves/</code> para componer el argumento <code>origen</code> de <code>cerrarPaquete</code>.
+          </p>
+
+          <h3 class="h5 mt-4">4. OperacionesPaquete (cifrado)</h3>
+          <p>
+            <code>cerrarPaquete(origen, contenido, modo)</code> serializa el contenido a JSON si hace falta, resuelve la variante por <code>modo</code>:
+            <strong><code>aes-256-gcm</code></strong> → variante A (autenticación GCM, paquete concatenado); <strong>cualquier otro modo válido en Node</strong> (p. ej. <code>aes-256-cbc</code>) → variante B (formato con separadores <code>.</code>).
+            El <code>modo</code> debe coincidir exactamente con el valor almacenado en Dynamo para ese canal validador.
+          </p>
+
+          <h3 class="h5 mt-4">5. HttpClient (túnel de confianza)</h3>
+          <p>
+            El cliente HTTPS nativo (<code>httpsClient.js</code>) construye un <code>Agent</code> con CA leídas de EFS, ejecuta el handshake, obtiene el certificado del peer,
+            ejecuta la validación <strong>CRL</strong> antes de enviar el cuerpo HTTP, y entonces envía el paquete cifrado a <code>urlValidador</code>.
+            Si el <em>remote endpoint</em> exige <strong>mTLS</strong>, se extiende el agente con <code>cert</code>/<code>key</code> desde EFS sin cambiar el diagrama de orquestación.
+          </p>
+          <p class="small text-muted mb-0">
+            Detalle de módulos TLS/CRL: <a href="crypto-transport.html#diagrama-interaccion">Túnel de Confianza (Transporte)</a>.
+          </p>
+        </section>
+
+        <section id="pies-de-plomo" class="mt-5">
+          <h2 class="h4">Estrategia «pies de plomo»</h2>
+          <p>
+            Cada capa asume que la anterior puede fallar de forma segura: sin logs crudos, sin TLS relajado, sin cifrado con firma incompleta.
+            La documentación y el código comparten el mismo contrato para que un ingeniero nuevo no tenga que adivinar parámetros ocultos entre repositorios.
+          </p>
+        </section>
+
+        <p class="text-muted small mt-5 mb-0">
+          Modelo de canal y código refactor: <a href="identity.html">Identidad / Canal</a> ·
+          Sanitización: <a href="logger.html">Logger</a>.
+        </p>
+      </div>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

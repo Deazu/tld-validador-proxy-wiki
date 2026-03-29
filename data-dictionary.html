@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tld-validador-proxy — Diccionario de Datos</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/wiki.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <script defer src="js/wiki-init.js"></script>
+  <script defer src="js/menu-sync.js"></script>
+  <script defer src="js/wiki-chrome.js"></script>
+</head>
+<body class="wiki-body bg-light">
+  <div class="wiki-layout">
+    <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
+      <div class="wiki-sidebar-inner p-3 flex-grow-1 overflow-auto">
+        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-1 px-2">
+          <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
+          <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
+        </a>
+        <nav class="nav flex-column wiki-sidebar-nav pt-2" aria-label="Navegación principal">
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🚀</span> PROYECTO</div>
+          <a class="nav-link wiki-nav-link" href="index.html"><span class="wiki-nav-ico" aria-hidden="true">🛡️</span> Misión</a>
+          <a class="nav-link wiki-nav-link" href="flow.html"><span class="wiki-nav-ico" aria-hidden="true">📊</span> Flujo General</a>
+          <a class="nav-link wiki-nav-link active" href="data-dictionary.html"><span class="wiki-nav-ico" aria-hidden="true">📖</span> Diccionario de Datos</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">📜</span> INFRAESTRUCTURA</div>
+          <a class="nav-link wiki-nav-link" href="network.html"><span class="wiki-nav-ico" aria-hidden="true">📋</span> samconfig.toml</a>
+          <a class="nav-link wiki-nav-link" href="deployment.html"><span class="wiki-nav-ico" aria-hidden="true">📄</span> template.yaml</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🔐</span> SEGURIDAD</div>
+          <a class="nav-link wiki-nav-link" href="crypto-app.html"><span class="wiki-nav-ico" aria-hidden="true">🔑</span> Cifrado App</a>
+          <a class="nav-link wiki-nav-link wiki-nav-link-parent" href="crypto-transport.html#por-que-diferente"><span class="wiki-nav-ico" aria-hidden="true">🔒</span> Transporte mTLS/CRL</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#diagrama-interaccion">Diagrama de secuencia</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#codigo-fuente">Código fuente (módulos)</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#variables-efs">Variables y EFS</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#rendimiento-lambda">Rendimiento Lambda</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#seguridad-cumplimiento">Seguridad</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#depuracion-troubleshooting">Depuración</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#evolucion-proximos-pasos">Evolución</a>
+          <a class="nav-link wiki-nav-link" href="connectivity-telered.html"><span class="wiki-nav-ico" aria-hidden="true">🌐</span> Conectividad Telered</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🛠️</span> COMPONENTES</div>
+          <a class="nav-link wiki-nav-link" href="identity.html"><span class="wiki-nav-ico" aria-hidden="true">👤</span> Identidad (Canal)</a>
+          <a class="nav-link wiki-nav-link" href="logger.html"><span class="wiki-nav-ico" aria-hidden="true">📝</span> Logger</a>
+        </nav>
+      </div>
+    </aside>
+    <main class="wiki-content flex-grow-1">
+      <div class="wiki-mobile-bar d-md-none mb-3">
+        <div class="dropdown">
+          <button class="btn btn-wiki-menu dropdown-toggle w-100 rounded-pill py-2" type="button" data-bs-toggle="dropdown">Menú wiki</button>
+          <ul class="dropdown-menu w-100 shadow border-0">
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🚀</span> PROYECTO</h6></li>
+            <li><a class="dropdown-item" href="index.html">🛡️ Misión</a></li>
+            <li><a class="dropdown-item" href="flow.html">📊 Flujo General</a></li>
+            <li><a class="dropdown-item active" href="data-dictionary.html">📖 Diccionario de Datos</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">📜</span> INFRAESTRUCTURA</h6></li>
+            <li><a class="dropdown-item" href="network.html">📋 samconfig.toml</a></li>
+            <li><a class="dropdown-item" href="deployment.html">📄 template.yaml</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🔐</span> SEGURIDAD</h6></li>
+            <li><a class="dropdown-item" href="crypto-app.html">🔑 Cifrado App</a></li>
+            <li><a class="dropdown-item" href="crypto-transport.html#por-que-diferente">🔒 Transporte mTLS/CRL</a></li>
+            <li><a class="dropdown-item" href="connectivity-telered.html">🌐 Conectividad Telered</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🛠️</span> COMPONENTES</h6></li>
+            <li><a class="dropdown-item" href="identity.html">👤 Identidad (Canal)</a></li>
+            <li><a class="dropdown-item" href="logger.html">📝 Logger</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="text-muted small mb-2">
+        <strong>Contrato de datos</strong> único para desarrollo de la Lambda, plantillas SAM y aprovisionamiento DynamoDB/EFS.
+        Relacionado: <a href="identity.html">Identidad (Canal)</a>, <a href="connectivity-telered.html">Conectividad Telered</a>, <a href="crypto-transport.html#variables-efs">Variables y EFS</a>.
+      </p>
+      <h1 class="h2 mb-2">Diccionario de Datos</h1>
+      <p class="lead text-muted mb-3">
+        Tablas DynamoDB, atributos tipados y layout de EFS necesarios para que el <code>tld-validador-proxy</code> sea <strong>operativo y autónomo</strong>:
+        resolución de canal, cifrado de aplicación, transporte TLS/mTLS, revocación y telemetría forense sin PII.
+      </p>
+
+      <nav class="wiki-inpage-toc small" aria-label="En esta página">
+        <div class="fw-semibold mb-2">En esta página</div>
+        <ul class="mb-0">
+          <li><a href="#tabla-canal">1. <code>tld-validador-canal</code></a></li>
+          <li><a href="#tabla-operacion">2. <code>tld-validador-canal-operacion</code></a></li>
+          <li><a href="#tabla-telemetry">3. <code>tld-validador-proxy-telemetry</code></a></li>
+          <li><a href="#efs-jerarquia">4. Jerarquía EFS <code>/mnt/tld-llaves/</code></a></li>
+          <li><a href="#er-diagrama">5. Diagrama entidad-relación</a></li>
+        </ul>
+      </nav>
+
+      <section id="tabla-canal" class="mt-4">
+        <h2 class="h3 border-0 pb-0">1. Tabla <code>tld-validador-canal</code></h2>
+        <p class="small">
+          <strong>Rol:</strong> configuración de negocio y seguridad por canal: quién es el validador en red, cómo se cifra el payload hacia él y qué perfil TLS aplica.
+          Clave de partición típica: <code>idCanal</code> (String). El proxy resuelve el ítem por id o por <code>alias</code> según el evento (ver <a href="identity.html">Identidad</a>).
+        </p>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Atributo</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Descripción y ejemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>idCanal</code></td>
+                <td>String</td>
+                <td><strong>Partition key.</strong> Identificador estable del canal en todo el ecosistema. Ejemplo: <code>CANAL_VALIDADOR_ABC</code>.</td>
+              </tr>
+              <tr>
+                <td><code>alias</code></td>
+                <td>String</td>
+                <td>Nombre amigable o código corto que el cliente puede enviar en lugar del id; el proxy puede resolver con Scan/GSI según diseño. Ejemplo: <code>validador-nomina</code>.</td>
+              </tr>
+              <tr>
+                <td><code>llaveCifrado</code></td>
+                <td>String</td>
+                <td>Referencia a la llave de cifrado: ARN de KMS (ej. <code>arn:aws:kms:…:key/…</code>) o identificador de fila en <code>tld-validador-canal-llave</code> según el patrón legado documentado en Identidad.</td>
+              </tr>
+              <tr>
+                <td><code>llaveDescifrado</code></td>
+                <td>String</td>
+                <td>Referencia simétrica para descifrar respuestas del validador cuando el flujo lo requiera; mismo tipo de convención que <code>llaveCifrado</code>.</td>
+              </tr>
+              <tr>
+                <td><code>algoritmoCifrado</code></td>
+                <td>String</td>
+                <td>Modo AES acordado para el sobre híbrido. Ejemplos: <code>AES_256_GCM</code>, <code>AES_256_CBC</code> (valores exactos fijados por el equipo y validados en código).</td>
+              </tr>
+              <tr>
+                <td><code>tlsProfile</code></td>
+                <td>String</td>
+                <td><strong>Perfil de transporte.</strong> Decide anclas de confianza: <code>TELERED_PKI</code> (CA/CRL desde EFS según política), <code>PUBLIC</code> (cadena pública estándar), u otros valores acordados. Ejemplo: <code>TELERED_PKI</code>.</td>
+              </tr>
+              <tr>
+                <td><code>mtlsActive</code></td>
+                <td>Boolean</td>
+                <td>Si es <code>true</code>, el cliente HTTPS del proxy carga <code>cert</code>/<code>key</code> desde las rutas EFS indicadas. Ejemplo: <code>false</code> en la mayoría de canales; <code>true</code> solo donde el validador exija mTLS.</td>
+              </tr>
+              <tr>
+                <td><code>tlsClientCertPath</code></td>
+                <td>String</td>
+                <td>Ruta absoluta al PEM del certificado de cliente (mTLS), bajo el mount EFS. Ejemplo: <code>/mnt/tld-llaves/certs/proxy-client.pem</code>.</td>
+              </tr>
+              <tr>
+                <td><code>tlsClientKeyPath</code></td>
+                <td>String</td>
+                <td>Ruta absoluta a la clave privada del cliente (formato PEM u operación acordada). Ejemplo: <code>/mnt/tld-llaves/keys/proxy-client-key.pem</code>.</td>
+              </tr>
+              <tr>
+                <td><code>tlsServerName</code></td>
+                <td>String</td>
+                <td>Override de SNI cuando el nombre TLS esperado no coincide con el host de la URL. Ejemplo: vacío (usar hostname de <code>urlValidador</code>) o <code>api.interno.empresa.com</code>.</td>
+              </tr>
+              <tr>
+                <td><code>urlValidador</code></td>
+                <td>String</td>
+                <td>URL HTTPS base o por defecto del validador para este canal. Ejemplo: <code>https://validador.interno/api/v1/validar</code>. Las operaciones pueden sobreescribir con <code>urlOperacion</code> en la tabla de operaciones.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small text-muted mb-0">
+          Pueden existir más atributos (auth dinámico, headers, JSON de login, etc.) heredados del legado; este diccionario lista los mínimos para <strong>identidad + aplicación + transporte</strong> del proxy autónomo.
+        </p>
+      </section>
+
+      <section id="tabla-operacion" class="mt-5">
+        <h2 class="h3 border-0 pb-0">2. Tabla <code>tld-validador-canal-operacion</code></h2>
+        <p class="small">
+          <strong>Rol:</strong> autorización fina: qué códigos de método de negocio (<code>metodo</code> en el evento) están permitidos para un <code>idCanal</code> y, opcionalmente, URL específica por operación.
+          El proxy debe rechazar métodos no declarados antes de abrir TLS o cifrar payload.
+        </p>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Atributo</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Descripción y ejemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>idCanal</code></td>
+                <td>String</td>
+                <td>FK lógica al canal. Debe coincidir con <code>tld-validador-canal.idCanal</code>. Ejemplo: <code>CANAL_VALIDADOR_ABC</code>.</td>
+              </tr>
+              <tr>
+                <td><code>operacion</code></td>
+                <td>String</td>
+                <td>Código de operación que el cliente envía como <code>metodo</code> (sort key en diseños compuestos). Ejemplo: <code>0001</code> (validación masiva), <code>0002</code> (consulta estado).</td>
+              </tr>
+              <tr>
+                <td><code>urlOperacion</code></td>
+                <td>String</td>
+                <td>Opcional. Si viene informada, sustituye o extiende la URL usada solo para esa operación. Ejemplo: <code>https://validador.interno/v2/validar-masivo</code>. Si vacío, se usa <code>urlValidador</code> del canal.</td>
+              </tr>
+              <tr>
+                <td><code>idCanalValidador</code> / metadatos</td>
+                <td>String / varios</td>
+                <td>Campos auxiliares que el legado use para reporting o dashboard; no son obligatorios para el transporte TLS en sí, pero pueden formar parte del mismo ítem según esquema desplegado.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small text-muted mb-0">
+          <strong>Clave compuesta típica:</strong> <code>PK = idCanal</code>, <code>SK = operacion</code> (o un solo ítem por fila con ambos atributos según el patrón de acceso elegido en SAM).
+        </p>
+      </section>
+
+      <section id="tabla-telemetry" class="mt-5">
+        <h2 class="h3 border-0 pb-0">3. Tabla <code>tld-validador-proxy-telemetry</code></h2>
+        <p class="small">
+          <strong>Rol:</strong> observabilidad técnica y forense por petición. Nombre por defecto en código: variable <code>PROXY_TELEMETRY_TABLE</code> o <code>tld-validador-proxy-telemetry</code> (ver <a href="crypto-transport.html#codigo-fuente"><code>telemetry.js</code></a>).
+          Cada <code>emit</code> escribe una línea de tiempo; no sustituye logs estructurados ni métricas CloudWatch, pero permite reconstruir orden de fases post-incidente.
+        </p>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Atributo</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Descripción y ejemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>correlationId</code></td>
+                <td>String</td>
+                <td>Identificador único de la petición end-to-end (API Gateway → proxy → validador). Ejemplo: UUID v4 o id generado en el borde. Todas las filas de una misma invocación comparten este valor en consultas forenses.</td>
+              </tr>
+              <tr>
+                <td><code>timestamp</code></td>
+                <td>Number</td>
+                <td>Epoch en milisegundos (<code>Date.now()</code>) del momento del evento. Ejemplo: <code>1712345678901</code>. Ordena la secuencia dentro del mismo <code>correlationId</code>.</td>
+              </tr>
+              <tr>
+                <td><code>phase</code> / <code>eventType</code></td>
+                <td>String</td>
+                <td>En el código actual el campo se llama <code>phase</code>; conceptualmente es el <strong>tipo de evento</strong> del pipeline. Valores sugeridos: <code>Handshake_Start</code>, <code>CRL_Check</code>, <code>HTTP_Request</code>, <code>HTTP_Response</code>, <code>Error</code>. Ejemplo: <code>CRL_Check</code>.</td>
+              </tr>
+              <tr>
+                <td><code>outcome</code></td>
+                <td>String</td>
+                <td>Resultado de la fase: por defecto <code>OK</code> en código; en fallos usar <code>FAIL</code> o códigos cortos acordados. Ejemplo: <code>FAIL</code> junto a <code>detail.code = TLS_HANDSHAKE</code>.</td>
+              </tr>
+              <tr>
+                <td><code>durationMs</code></td>
+                <td>Number</td>
+                <td>Duración opcional de la fase en milisegundos (útil para p95/p99 por etapa). Ejemplo: <code>87</code> para un handshake completado.</td>
+              </tr>
+              <tr>
+                <td><code>detail</code></td>
+                <td>Map / Object</td>
+                <td>Metadatos técnicos <strong>sin PII</strong>: códigos de error, fase interna, contadores. Ejemplo: <code>{ "code": "CERT_REVOKED", "phase": "crl" }</code>. No incluir cuerpos HTTP, DN completos ni tokens.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small text-muted mb-0">
+          <strong>Recomendación:</strong> GSI con <code>correlationId</code> (partition) y <code>timestamp</code> (sort) para consultas por petición. Opcionalmente añadir <code>idCanal</code> dentro de <code>detail</code> para filtrar incidentes por canal sin exponer datos personales.
+        </p>
+      </section>
+
+      <section id="efs-jerarquia" class="mt-5">
+        <h2 class="h3 border-0 pb-0">4. Estructura de llaves en EFS (<code>/mnt/tld-llaves/</code>)</h2>
+        <p class="small">
+          El punto de montaje efectivo en Lambda debe coincidir con los parámetros SAM (<code>LIB_RUTA_ARCHIVO_CA</code>, etc.). La jerarquía lógica siguiente normaliza nombres de carpetas para CA, CRL, certificados de cliente y claves privadas.
+          En despliegues existentes pueden aparecer subcarpetas como <code>tld-ca/</code> o <code>tld-crl/</code>; lo importante es que las <strong>rutas en DynamoDB y en variables de entorno apunten a archivos reales</strong>.
+        </p>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Ruta lógica</th>
+                <th scope="col">Contenido</th>
+                <th scope="col">Uso en el Proxy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>/mnt/tld-llaves/ca/</code></td>
+                <td>Certificados raíz e intermedios (PEM/DER según convención)</td>
+                <td>Inyectados en <code>https.Agent</code> como <code>ca: [Buffer, Buffer]</code> para confiar solo en la PKI Telered (o subcarpetas equivalentes referenciadas por env).</td>
+              </tr>
+              <tr>
+                <td><code>/mnt/tld-llaves/crl/</code></td>
+                <td>Archivos CRL firmados (DER/PEM según parser)</td>
+                <td>Leídos por el módulo de revocación; caché en memoria con TTL para no releer en cada petición.</td>
+              </tr>
+              <tr>
+                <td><code>/mnt/tld-llaves/certs/</code></td>
+                <td>Certificados de <strong>cliente</strong> para mTLS</td>
+                <td>Ruta referenciada por <code>tlsClientCertPath</code> en el canal; solo lectura cuando <code>mtlsActive</code> es verdadero.</td>
+              </tr>
+              <tr>
+                <td><code>/mnt/tld-llaves/keys/</code></td>
+                <td>Llaves privadas (<code>.pem</code> u otros formatos acordados)</td>
+                <td>Ruta referenciada por <code>tlsClientKeyPath</code>; permisos POSIX restrictivos; rotación y backup según política de seguridad.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="er-diagrama" class="mt-5">
+        <h2 class="h3 border-0 pb-0">5. Diagrama entidad-relación (lógico)</h2>
+        <p class="small">
+          DynamoDB no impone FK; el diagrama expresa el <strong>contrato conceptual</strong> entre tablas y el uso de <code>idCanal</code> como eje de unión. La telemetría se vincula al negocio por <code>correlationId</code> y, opcionalmente, por metadatos en <code>detail</code>.
+        </p>
+        <div class="wiki-mermaid-wrap shadow-sm mb-3">
+          <pre class="mermaid">erDiagram
+    VALIDADOR_CANAL ||--o{ CANAL_OPERACION : autoriza
+    VALIDADOR_CANAL ||--o{ PROXY_TELEMETRY : traza
+    VALIDADOR_CANAL {
+      string idCanal
+      string alias
+      string urlValidador
+      string tlsProfile
+      boolean mtlsActive
+      string llaveCifrado
+      string algoritmoCifrado
+    }
+    CANAL_OPERACION {
+      string idCanal
+      string operacion
+      string urlOperacion
+    }
+    PROXY_TELEMETRY {
+      string correlationId
+      number timestamp
+      string phase
+      string outcome
+      number durationMs
+    }</pre>
+        </div>
+      </section>
+
+      <div class="alert alert-secondary small mb-0" role="alert">
+        <strong>Tablas satélite (legado / token):</strong> <code>tld-validador-canal-llave</code> (material criptográfico referenciado por id),
+        <code>tld-validador-canal-auth-token</code> (caché de sesión OAuth) y similares siguen fuera de este contrato central pero coexisten en el mismo ecosistema; no son necesarias para describir solo el transporte TLS del proxy.
+      </div>
+
+      <p class="small text-muted mt-4 mb-1">
+        <strong>Diccionario de datos</strong> — contrato v1. <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+      </p>
+      <p class="text-muted small mb-0">
+        Transporte: <a href="crypto-transport.html">Túnel TLS</a> · Justificación Telered: <a href="connectivity-telered.html">Conectividad Telered</a>.
+      </p>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

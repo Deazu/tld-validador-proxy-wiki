@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tld-validador-proxy — Infraestructura template.yaml</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/wiki.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <script defer src="js/wiki-init.js"></script>
+  <script defer src="js/menu-sync.js"></script>
+  <script defer src="js/wiki-chrome.js"></script>
+</head>
+<body class="wiki-body bg-light">
+  <div class="wiki-layout">
+    <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
+      <div class="wiki-sidebar-inner p-3 flex-grow-1 overflow-auto">
+        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-1 px-2">
+          <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
+          <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
+        </a>
+        <nav class="nav flex-column wiki-sidebar-nav pt-2" aria-label="Navegación principal">
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🚀</span> PROYECTO</div>
+          <a class="nav-link wiki-nav-link" href="index.html"><span class="wiki-nav-ico" aria-hidden="true">🛡️</span> Misión</a>
+          <a class="nav-link wiki-nav-link" href="flow.html"><span class="wiki-nav-ico" aria-hidden="true">📊</span> Flujo General</a>
+          <a class="nav-link wiki-nav-link" href="data-dictionary.html"><span class="wiki-nav-ico" aria-hidden="true">📖</span> Diccionario de Datos</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">📜</span> INFRAESTRUCTURA</div>
+          <a class="nav-link wiki-nav-link" href="network.html"><span class="wiki-nav-ico" aria-hidden="true">📋</span> samconfig.toml</a>
+          <a class="nav-link wiki-nav-link active" href="deployment.html"><span class="wiki-nav-ico" aria-hidden="true">📄</span> template.yaml</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🔐</span> SEGURIDAD</div>
+          <a class="nav-link wiki-nav-link" href="crypto-app.html"><span class="wiki-nav-ico" aria-hidden="true">🔑</span> Cifrado App</a>
+          <a class="nav-link wiki-nav-link wiki-nav-link-parent" href="crypto-transport.html#diagrama-interaccion"><span class="wiki-nav-ico" aria-hidden="true">🔒</span> Transporte mTLS/CRL</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#diagrama-interaccion">Diagrama de secuencia</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#codigo-fuente">Código fuente (módulos)</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#variables-efs">Variables y EFS</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#rendimiento-lambda">Rendimiento Lambda</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#seguridad-cumplimiento">Seguridad</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#depuracion-troubleshooting">Depuración</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#evolucion-proximos-pasos">Evolución</a>
+          <a class="nav-link wiki-nav-link" href="connectivity-telered.html"><span class="wiki-nav-ico" aria-hidden="true">🌐</span> Conectividad Telered</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🛠️</span> COMPONENTES</div>
+          <a class="nav-link wiki-nav-link" href="identity.html"><span class="wiki-nav-ico" aria-hidden="true">👤</span> Identidad (Canal)</a>
+          <a class="nav-link wiki-nav-link" href="logger.html"><span class="wiki-nav-ico" aria-hidden="true">📝</span> Logger</a>
+        </nav>
+      </div>
+    </aside>
+    <main class="wiki-content flex-grow-1">
+      <div class="wiki-mobile-bar d-md-none mb-3">
+        <div class="dropdown">
+          <button class="btn btn-wiki-menu dropdown-toggle w-100 rounded-pill py-2" type="button" data-bs-toggle="dropdown">Menú wiki</button>
+          <ul class="dropdown-menu w-100 shadow border-0">
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🚀</span> PROYECTO</h6></li>
+            <li><a class="dropdown-item" href="index.html">🛡️ Misión</a></li>
+            <li><a class="dropdown-item" href="flow.html">📊 Flujo General</a></li>
+            <li><a class="dropdown-item" href="data-dictionary.html">📖 Diccionario de Datos</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">📜</span> INFRAESTRUCTURA</h6></li>
+            <li><a class="dropdown-item" href="network.html">📋 samconfig.toml</a></li>
+            <li><a class="dropdown-item active" href="deployment.html">📄 template.yaml</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🔐</span> SEGURIDAD</h6></li>
+            <li><a class="dropdown-item" href="crypto-app.html">🔑 Cifrado App</a></li>
+            <li><a class="dropdown-item" href="crypto-transport.html#diagrama-interaccion">🔒 Transporte mTLS/CRL</a></li>
+            <li><a class="dropdown-item" href="connectivity-telered.html">🌐 Conectividad Telered</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🛠️</span> COMPONENTES</h6></li>
+            <li><a class="dropdown-item" href="identity.html">👤 Identidad (Canal)</a></li>
+            <li><a class="dropdown-item" href="logger.html">📝 Logger</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <nav class="wiki-inpage-toc small mb-4" aria-label="En esta página">
+        <div class="fw-semibold mb-2">En esta página</div>
+        <ul class="mb-0">
+          <li><a href="#rol-template">Rol del template en SAM</a></li>
+          <li><a href="#recursos">Recursos clave</a></li>
+          <li><a href="#telemetry">Tabla de telemetría</a></li>
+          <li><a href="#samconfig">Relación con samconfig.toml</a></li>
+          <li><a href="#plantilla-copiar">template.yaml propuesto (copiar)</a></li>
+        </ul>
+      </nav>
+
+      <h1 class="h2 mb-3">Infraestructura <code>template.yaml</code></h1>
+      <p class="lead text-muted">
+        Este documento es el <strong>manual del plano de construcción</strong> de la Lambda <code>tld-validador-proxy</code>, en el mismo espíritu que
+        <a href="network.html">samconfig.toml</a> documenta los parámetros de despliegue: aquí definimos <em>qué</em> construye CloudFormation/SAM
+        (función, VPC, EFS, IAM, DynamoDB de telemetría) para que el equipo pueda versionar infraestructura y aplicación en un solo repositorio.
+      </p>
+
+      <section id="rol-template">
+        <h2 class="h4">Rol del <code>template.yaml</code></h2>
+        <p>
+          El archivo es el <strong>contrato declarativo</strong> entre ingeniería y AWS: describe la Lambda con <code>VpcConfig</code> alineada a los stacks satélite,
+          el montaje <code>FileSystemConfigs</code> en <code>/mnt/tld-llaves</code> para CA, CRL y material PEM operativo, variables de entorno,
+          permisos para leer las tablas <code>tld-validador-canal*</code>, usar KMS según el <code>origen</code> del motor criptográfico, y escribir en la tabla
+          <code>tld-validador-proxy-telemetry</code>. Cualquier desviación respecto a P2M / cuenta-nombre / alias debe quedar explícita en parámetros o en ADR.
+        </p>
+      </section>
+
+      <section id="recursos" class="mt-4">
+        <h2 class="h4">Recursos que debe cubrir el plano</h2>
+        <ul>
+          <li><strong>AWS::Serverless::Function</strong> (o equivalente) con runtime Node.js, handler, código en <code>lambdas/proxy/</code>, timeout/memoria acordes al cold start EFS + TLS.</li>
+          <li><strong>VpcConfig:</strong> mismos <code>SecurityGroupIds</code> y <code>SubnetIds</code> que el servicio hermano en cada ambiente (valores inyectados vía <code>samconfig.toml</code>).</li>
+          <li><strong>FileSystemConfigs:</strong> ARN del access point de EFS y <code>LocalMountPath: /mnt/tld-llaves</code>.</li>
+          <li><strong>IAM:</strong> lectura (y si aplica escritura acotada) sobre tablas <code>tld-validador-canal</code>, <code>tld-validador-canal-llave</code>, <code>tld-validador-canal-operacion</code> y similares; <code>kms:Encrypt</code> / <code>kms:Decrypt</code> sobre la clave indicada; <code>dynamodb:PutItem</code> (o document API) sobre la tabla de telemetría; permisos EFS para montaje.</li>
+          <li><strong>API privada</strong> (opcional en la plantilla mínima): si el proxy se expone vía API Gateway, replicar <code>EndpointConfiguration: PRIVATE</code> y <code>VPCEndpointIds</code> como en los APIs existentes.</li>
+        </ul>
+      </section>
+
+      <section id="telemetry" class="mt-4">
+        <h2 class="h4">Tabla <code>tld-validador-proxy-telemetry</code></h2>
+        <p>
+          Tabla <strong>dedicada a observabilidad técnica</strong> (fases TLS, CRL, cifrado, latencias). No sustituye auditoría de negocio.
+        </p>
+        <p class="small mb-0"><strong>Claves sugeridas:</strong> PK <code>correlationId</code>, SK <code>timestamp</code> (epoch ms). Atributos: <code>phase</code>, <code>outcome</code>, <code>durationMs</code>, <code>expireAt</code> (TTL), etc.</p>
+      </section>
+
+      <section id="samconfig" class="mt-4">
+        <h2 class="h4">Relación con <code>samconfig.toml</code></h2>
+        <p>
+          Los <code>parameter_overrides</code> del perfil SAM deben <strong>llenar los parámetros</strong> declarados abajo (<code>VPCe</code> solo si usas API privada con resource policy, subnets, SG, <code>AccessPointId</code>, <code>KmsKeyArn</code>, rutas CA/CRL, nombre de tabla de telemetría si lo externalizas).
+          La matriz de IDs por ambiente está en <a href="network.html">Manual samconfig.toml</a>.
+        </p>
+      </section>
+
+      <section id="plantilla-copiar" class="mt-5">
+        <h2 class="h4">Plantilla <code>template.yaml</code> propuesta (copiar)</h2>
+        <p class="small text-muted">
+          <strong>Borrador de ingeniería</strong>: validar ARNs, nombres de tablas y políticas con el equipo de plataforma antes del primer <code>sam deploy</code>.
+          Ajustar <code>CodeUri</code>, <code>Handler</code> y recursos opcionales (API, alarmas, SSM) según el repo real.
+        </p>
+        <div class="border border-secondary rounded overflow-hidden bg-dark wiki-copy-block wiki-code-scroll">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-bottom border-secondary">
+            <span class="small text-white-50 font-monospace">template.yaml</span>
+            <button type="button" class="btn btn-sm btn-outline-light wiki-copy-btn" data-wiki-copy-for="wiki-template-yaml-proxy" aria-label="Copiar template.yaml">Copiar Configuración</button>
+          </div>
+          <pre class="wiki-samconfig-pre mb-0 p-3 text-light bg-dark rounded-0"><code id="wiki-template-yaml-proxy">AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  tld-validador-proxy — plano SAM (Lambda + VPC + EFS + telemetría DynamoDB + IAM canal/KMS).
+  Alinear parameter_overrides con network.html / samconfig.toml.
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 512
+    Runtime: nodejs20.x
+    Architectures:
+      - x86_64
+
+Parameters:
+  DeployEnvironment:
+    Type: String
+    Description: Etiqueta de despliegue (dev, sandbox, qa, prod, etc.)
+
+  SecurityGroup:
+    Type: String
+    Description: Security Group de la Lambda en la VPC compartida
+
+  Subnet1:
+    Type: String
+  Subnet2:
+    Type: String
+  Subnet3:
+    Type: String
+
+  AccessPointId:
+    Type: String
+    Description: ID del EFS Access Point (fsap-...)
+
+  KmsKeyArn:
+    Type: String
+    Description: ARN completo de la CMK/MRK para Encrypt/Decrypt vía operacionesPaquete
+
+  RutaArchivoCa:
+    Type: String
+    Default: /mnt/tld-llaves/tld-ca/caroot.cer
+  RutaArchivoCaSub:
+    Type: String
+    Default: /mnt/tld-llaves/tld-ca/casub.cer
+  RutaArchivoCrl:
+    Type: String
+    Default: /mnt/tld-llaves/tld-crl/crltelered.crl
+
+Resources:
+  ProxyTelemetryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: tld-validador-proxy-telemetry
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: correlationId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: correlationId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: expireAt
+        Enabled: true
+      Tags:
+        - Key: Project
+          Value: tld-validador-proxy
+        - Key: Backup
+          Value: 'yes'
+
+  ValidatorProxyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'tld-validador-proxy-${DeployEnvironment}'
+      CodeUri: lambdas/proxy/
+      Handler: app.handler
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref SecurityGroup
+        SubnetIds:
+          - !Ref Subnet1
+          - !Ref Subnet2
+          - !Ref Subnet3
+      FileSystemConfigs:
+        - Arn: !Sub 'arn:aws:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:access-point/${AccessPointId}'
+          LocalMountPath: /mnt/tld-llaves
+      Environment:
+        Variables:
+          DeployEnvironment: !Ref DeployEnvironment
+          PROXY_TELEMETRY_TABLE: !Ref ProxyTelemetryTable
+          LIB_RUTA_ARCHIVO_CA: !Ref RutaArchivoCa
+          LIB_RUTA_ARCHIVO_CA_SUB: !Ref RutaArchivoCaSub
+          LIB_RUTA_ARCHIVO_CRL: !Ref RutaArchivoCrl
+          PRINT_LOGS: 'off'
+      Policies:
+        - Statement:
+            - Sid: DynamoReadCanalFamily
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:Query
+                - dynamodb:Scan
+                - dynamodb:BatchGetItem
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/tld-validador-canal'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/tld-validador-canal/index/*'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/tld-validador-canal-llave'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/tld-validador-canal-operacion'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/tld-validador-canal-operacion/index/*'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/tld-validador-canal-auth-token'
+            - Sid: DynamoWriteTelemetry
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !GetAtt ProxyTelemetryTable.Arn
+            - Sid: KmsForCryptoPackage
+              Effect: Allow
+              Action:
+                - kms:Decrypt
+                - kms:Encrypt
+              Resource: !Ref KmsKeyArn
+            - Sid: EfsMountAccessPoint
+              Effect: Allow
+              Action:
+                - elasticfilesystem:ClientMount
+                - elasticfilesystem:ClientRead
+              Resource: !Sub 'arn:aws:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:access-point/${AccessPointId}'
+
+Outputs:
+  ValidatorProxyFunctionArn:
+    Description: ARN de la función proxy
+    Value: !GetAtt ValidatorProxyFunction.Arn
+  ProxyTelemetryTableName:
+    Description: Tabla de telemetría técnica
+    Value: !Ref ProxyTelemetryTable
+</code></pre>
+        </div>
+        <p class="small text-muted mt-3 mb-0">
+          Si el navegador bloquea el portapapeles con <code>file://</code>, sirve la wiki por HTTP local o copia manualmente. Tras pegar en el repo, ejecuta
+          <code>sam validate</code> y revisa que los nombres de tablas coincidan con el entorno (algunos proyectos usan sufijos por cuenta).
+        </p>
+      </section>
+
+      <h2 class="h5 mt-5">Ejemplo de evento (referencia)</h2>
+      <pre class="bg-dark text-light p-3 rounded small"><code>{
+  "idCanalEmisor": "1005",
+  "idCanalValidador": "1000",
+  "metodo": "0001",
+  "dataPlana": { "metodo": "0001", "solicitudes": [] }
+}</code></pre>
+
+      <p class="text-muted small mt-5 mb-0">
+        Infraestructura como código junto a <a href="network.html">samconfig.toml</a> y <a href="flow.html">Flujo General</a>.
+      </p>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

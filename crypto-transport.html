@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tld-validador-proxy — Túnel de Confianza (Manual de construcción)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/wiki.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <script defer src="js/wiki-init.js"></script>
+  <script defer src="js/menu-sync.js"></script>
+  <script defer src="js/wiki-chrome.js"></script>
+</head>
+<body class="wiki-body bg-light">
+  <div class="wiki-layout">
+    <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
+      <div class="wiki-sidebar-inner p-3 flex-grow-1 overflow-auto">
+        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-1 px-2">
+          <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
+          <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
+        </a>
+        <nav class="nav flex-column wiki-sidebar-nav pt-2" aria-label="Navegación principal">
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🚀</span> PROYECTO</div>
+          <a class="nav-link wiki-nav-link" href="index.html"><span class="wiki-nav-ico" aria-hidden="true">🛡️</span> Misión</a>
+          <a class="nav-link wiki-nav-link" href="flow.html"><span class="wiki-nav-ico" aria-hidden="true">📊</span> Flujo General</a>
+          <a class="nav-link wiki-nav-link" href="data-dictionary.html"><span class="wiki-nav-ico" aria-hidden="true">📖</span> Diccionario de Datos</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">📜</span> INFRAESTRUCTURA</div>
+          <a class="nav-link wiki-nav-link" href="network.html"><span class="wiki-nav-ico" aria-hidden="true">📋</span> samconfig.toml</a>
+          <a class="nav-link wiki-nav-link" href="deployment.html"><span class="wiki-nav-ico" aria-hidden="true">📄</span> template.yaml</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🔐</span> SEGURIDAD</div>
+          <a class="nav-link wiki-nav-link" href="crypto-app.html"><span class="wiki-nav-ico" aria-hidden="true">🔑</span> Cifrado App</a>
+          <a class="nav-link wiki-nav-link wiki-nav-link-parent active" href="crypto-transport.html#por-que-diferente"><span class="wiki-nav-ico" aria-hidden="true">🔒</span> Transporte mTLS/CRL</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#por-que-diferente">¿Por qué este túnel?</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link active" href="crypto-transport.html#diagrama-interaccion">Diagrama de secuencia</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#codigo-fuente">Código fuente (módulos)</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#variables-efs">Variables y EFS</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#rendimiento-lambda">Rendimiento Lambda</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#seguridad-cumplimiento">Seguridad</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#depuracion-troubleshooting">Depuración</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#evolucion-proximos-pasos">Evolución</a>
+          <a class="nav-link wiki-nav-link" href="connectivity-telered.html"><span class="wiki-nav-ico" aria-hidden="true">🌐</span> Conectividad Telered</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🛠️</span> COMPONENTES</div>
+          <a class="nav-link wiki-nav-link" href="identity.html"><span class="wiki-nav-ico" aria-hidden="true">👤</span> Identidad (Canal)</a>
+          <a class="nav-link wiki-nav-link" href="logger.html"><span class="wiki-nav-ico" aria-hidden="true">📝</span> Logger</a>
+        </nav>
+      </div>
+    </aside>
+    <main class="wiki-content flex-grow-1">
+      <div class="wiki-mobile-bar d-md-none mb-3">
+        <div class="dropdown">
+          <button class="btn btn-wiki-menu dropdown-toggle w-100 rounded-pill py-2" type="button" data-bs-toggle="dropdown">Menú wiki</button>
+          <ul class="dropdown-menu w-100 shadow border-0">
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🚀</span> PROYECTO</h6></li>
+            <li><a class="dropdown-item" href="index.html">🛡️ Misión</a></li>
+            <li><a class="dropdown-item" href="flow.html">📊 Flujo General</a></li>
+            <li><a class="dropdown-item" href="data-dictionary.html">📖 Diccionario de Datos</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">📜</span> INFRAESTRUCTURA</h6></li>
+            <li><a class="dropdown-item" href="network.html">📋 samconfig.toml</a></li>
+            <li><a class="dropdown-item" href="deployment.html">📄 template.yaml</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🔐</span> SEGURIDAD</h6></li>
+            <li><a class="dropdown-item" href="crypto-app.html">🔑 Cifrado App</a></li>
+            <li><a class="dropdown-item active" href="crypto-transport.html#por-que-diferente">🔒 Transporte mTLS/CRL</a></li>
+            <li><a class="dropdown-item" href="connectivity-telered.html">🌐 Conectividad Telered</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🛠️</span> COMPONENTES</h6></li>
+            <li><a class="dropdown-item" href="identity.html">👤 Identidad (Canal)</a></li>
+            <li><a class="dropdown-item" href="logger.html">📝 Logger</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="text-muted small mb-2"><a href="crypto-app.html">Cifrado App</a> — cifrado híbrido del <em>contenido</em> del mensaje. Esta página explica el <strong>túnel</strong> por el que ese mensaje viaja: TLS, CA, CRL y el código que lo implementa.</p>
+      <h1 class="h2 mb-2">Túnel de confianza — transporte seguro hacia el validador remoto</h1>
+      <p class="lead text-muted mb-3">
+        Está escrita para alguien que programa bien en Node pero <strong>nunca</strong> se ha parado a leer un handshake TLS.
+        Aquí vas a encontrar analogías, siglas explicadas al momento y la historia de lo que hace <code>httpsClient.js</code> y <code>crl.js</code> — sin depender de buscadores externos.
+        Para la <strong>justificación frente a legacy</strong> (cuenta-nombre, <code>tld-util</code>, variable <code>URL_CA_TELERED</code>) y el modelo DynamoDB propuesto, ver <a href="connectivity-telered.html">Conectividad Telered y mTLS</a>.
+      </p>
+
+      <section id="por-que-diferente" class="mb-4">
+        <h2 class="h4 text-body">¿Por qué este túnel es diferente? (El portero de la discoteca)</h2>
+        <p>
+          Imagina una discoteca con un portero exigente. Para entrar, no basta con gritar “soy cliente”: hace falta un documento que el local reconozca.
+        </p>
+        <p>
+          <strong>HTTPS “de toda la vida”</strong> (Netflix, Google, un sitio HTTPS cualquiera en el navegador) funciona así: <em>tú</em> miras el carné del servidor.
+          El navegador comprueba que el certificado del sitio esté firmado por alguna autoridad en la que <em>él</em> ya confía.
+          El servidor, en cambio, <strong>no te pide carné</strong>: no sabe si eres una persona, un bot o otra máquina; solo atiende la conexión.
+          Eso basta para la web pública, pero en integración B2B a veces queremos simetría: que ambos lados demuestren identidad.
+        </p>
+        <p>
+          <strong>mTLS</strong> (<em>mutual TLS</em>, TLS mutuo) es la versión donde <strong>los dos</strong> se enseñan el pasaporte.
+          El <strong>Proxy</strong> (nuestra Lambda) comprueba que el <strong>validador remoto</strong> sea quien dice ser, usando las <strong>CA</strong> de Telered que montamos en EFS: si el certificado no encaja con esa cadena de confianza, el Proxy <strong>cuelga el teléfono</strong> y no sigue la conversación.
+          A la inversa, el validador puede exigir que el Proxy presente <em>su</em> certificado de cliente; entonces el validador aplica la misma lógica hacia nosotros.
+          <strong>Sin los dos carnés válidos (cuando la política exige mTLS), no hay charla.</strong>
+        </p>
+        <p class="small text-muted mb-0">
+          En el despliegue <strong>base</strong> de esta wiki, el foco es: TLS con <strong>CA propias</strong> + <strong>CRL</strong> antes del cuerpo HTTP.
+          El modo <strong>mTLS completo</strong> (certificado de cliente en el Agent) es el siguiente escalón cuando el endpoint lo exija; la idea de “doble pasaporte” sigue siendo la misma.
+        </p>
+      </section>
+
+      <h2 class="h5 text-secondary">Qué problema de seguridad cerramos (en una frase)</h2>
+      <p>
+        Sin este diseño, alguien podría intentar que nuestra Lambda hablara con <strong>otro servidor</strong> que se hace pasar por el validador (red, DNS mal apuntado, etc.).
+        El cifrado de aplicación protege el <em>interior</em> del sobre, pero si el túnel TLS termina en un impostor, el impostor descifra su propio TLS y lee el mensaje.
+        Por eso exigimos: <strong>cadena de certificados válida según nuestras CA</strong> y <strong>certificado no revocado</strong> (lista CRL), antes de mandar datos sensibles.
+      </p>
+
+      <div class="wiki-callout-beginner">
+        <div class="wiki-callout-title">HTTPS en el navegador vs este Proxy (misma tecnología, distinto “portero”)</div>
+        <p class="small mb-2">
+          Tu navegador ya trae un bloc de CA públicas y las actualiza solo. Nuestra Lambda es un <strong>cliente TLS</strong> hacia un host de <strong>PKI interna</strong>: el bloc genérico de Node no sirve.
+        </p>
+        <p class="small mb-0">
+          Solución: cargamos en el <code>https.Agent</code> los PEM de la CA raíz e intermedia de Telered desde EFS.
+          <strong>Mecánicamente</strong>, durante el handshake Node compara la cadena que envía el servidor con esas anclas. Si no cuadra, la conexión falla — equivalente a que el portero diga “este sello no lo emitimos nosotros”.
+        </p>
+      </div>
+
+      <div class="wiki-callout-beginner">
+        <div class="wiki-callout-title"><strong>CA</strong> (Certificate Authority) — el ente que da fe</div>
+        <p class="small mb-0">
+          Una <strong>CA</strong> no es “magia”: es la organización que <strong>firma digitalmente</strong> un certificado y así declara “esta clave pública corresponde a este nombre/servicio”.
+          Piensa en un <strong>ente que da fe</strong>, como quien sella un documento oficial.
+          Si el certificado del validador <strong>no</strong> está firmado (directa o indirectamente) por <strong>nuestra</strong> CA de Telered, el Proxy <strong>no acepta la identidad</strong> del remoto y corta — igual que si mostraras un carné de otra empresa en la puerta equivocada.
+        </p>
+      </div>
+
+      <div class="wiki-callout-beginner">
+        <div class="wiki-callout-title"><strong>CRL</strong> (Certificate Revocation List) — la lista negra</div>
+        <p class="small mb-0">
+          Que el carné sea <em>auténtico</em> y esté bien sellado no basta: puede haber sido <strong>robado, perdido o anulado hoy mismo</strong>.
+          La <strong>CRL</strong> es una <strong>lista negra</strong> publicada y firmada por la CA: enumera certificados que <strong>ya no deben usarse</strong> aunque aún no hayan “caducado” por fecha.
+          Nuestro código lee esa lista desde EFS y compara el <strong>número de serie</strong> del certificado del validador. Si aparece en la lista, el Proxy <strong>no envía el cuerpo HTTP</strong> — la conversación se para ahí.
+          <strong>OCSP</strong> (<em>Online Certificate Status Protocol</em>) es otra forma de preguntar “¿sigue vivo este certificado?” en tiempo casi real; aquí usamos CRL en archivo; OCSP sería una evolución posible.
+        </p>
+      </div>
+
+      <div class="wiki-callout-beginner">
+        <div class="wiki-callout-title"><strong>SNI</strong> (Server Name Indication) — a qué oficina vas en el edificio</div>
+        <p class="small mb-0">
+          En una misma IP pueden convivir muchos sitios HTTPS. <strong>SNI</strong> es un dato que el <strong>cliente envía al inicio</strong> del handshake para decir: “quiero hablar con <em>este</em> nombre de host”.
+          Analogía: entras a un edificio y en recepción dices <strong>a qué oficina concreta</strong> vas; sin eso, el servidor no sabe qué certificado presentarte.
+          En <code>httpsClient.js</code>, <code>servername: u.hostname</code> es justo eso: el nombre que el validador espera en TLS.
+        </p>
+      </div>
+
+      <div class="wiki-callout-beginner">
+        <div class="wiki-callout-title"><strong>Certificado X.509</strong> — el documento que se enseña en la puerta</div>
+        <p class="small mb-0">
+          <strong>X.509</strong> es el <strong>formato estándar</strong> del fichero de certificado: quién es el titular, hasta cuándo vale, qué clave pública lleva, y la firma de la CA.
+          En código, tras el handshake, Node te lo entrega como objeto (p. ej. <code>getPeerCertificate</code>); no necesitas saber ASN.1 de memoria, solo que es <strong>el documento que estamos validando</strong>.
+        </p>
+      </div>
+
+      <div class="wiki-callout-beginner">
+        <div class="wiki-callout-title"><strong>mTLS</strong> (TLS mutuo) — dos pasaportes cuando la política lo pide</div>
+        <p class="small mb-0">
+          En TLS “solo servidor”, solo el validador enseña X.509 y nosotros lo comprobamos.
+          Con <strong>mTLS</strong>, nosotros también presentamos certificado de cliente y el validador aplica su propia CA/política hacia el Proxy.
+          En esta base de código, eso implicaría añadir <code>cert</code> y <code>key</code> al <code>Agent</code> cuando el endpoint lo exija; la narrativa del “doble carné” es la misma que en la sección de arriba.
+        </p>
+      </div>
+
+      <p class="small text-muted mb-3">
+        <strong>Stack:</strong> módulo <code>https</code> de Node para TLS; <code>asn1js</code> y <code>pkijs</code> solo para <strong>leer el archivo CRL</strong> (Node no trae un parser CRL de alto nivel listo para política).
+        Ventaja: ves sockets, timeouts y errores; nada escondido detrás de un cliente HTTP “caja negra”.
+      </p>
+      <div class="alert alert-warning" role="alert">
+        <strong>Operación segura:</strong> no registrar certificados completos ni payloads; usar <code>correlationId</code>; la telemetría es forense, no almacén de secretos.
+      </div>
+
+      <nav class="wiki-inpage-toc small" aria-label="En esta página">
+        <div class="fw-semibold mb-2">En esta página</div>
+        <ul class="mb-0">
+          <li><a href="#por-que-diferente">¿Por qué este túnel es diferente?</a></li>
+          <li><a href="#diagrama-interaccion">1. Vista de extremo a extremo (diagrama)</a></li>
+          <li><a href="#handshake-pasos">2. Handshake TLS en milisegundos (narrativa)</a></li>
+          <li><a href="#crl-flujo">3. CRL, serial number y <code>crl.js</code></a></li>
+          <li><a href="#codigo-fuente">4. Código fuente por módulo (copiable)</a></li>
+          <li><a href="#variables-efs">5. Variables, EFS e inyección de confianza</a></li>
+          <li><a href="#rendimiento-lambda">6. Rendimiento y cold starts</a></li>
+          <li><a href="#seguridad-cumplimiento">7. Seguridad y cumplimiento</a></li>
+          <li><a href="#depuracion-troubleshooting">8. Depuración</a></li>
+          <li><a href="#evolucion-proximos-pasos">9. Evolución</a></li>
+        </ul>
+      </nav>
+
+      <section id="diagrama-interaccion">
+        <h2 class="h3 border-0 pb-0">1. Vista de extremo a extremo (misma “película” que Flujo General)</h2>
+        <p>
+          Cada flecha cuenta <strong>qué decisión de seguridad</strong> se toma en ese momento, no solo el nombre de un módulo.
+          Fíjate en el tramo <code>HttpClient</code>: primero se establece confianza TLS y se consulta la <strong>lista negra (CRL)</strong>; solo después circula el cuerpo HTTP.
+        </p>
+        <div class="wiki-mermaid-wrap shadow-sm mb-4">
+          <pre class="mermaid">sequenceDiagram
+    autonumber
+    participant Client as "Cliente interno"
+    participant Handler as "Proxy Handler"
+    participant Log as "Logger sanitize"
+    participant Canal as "Canal DynamoDB"
+    participant Crypto as OperacionesPaquete
+    participant Http as HttpClient
+    participant Target as "Validador remoto"
+
+    Client->>+Handler: Llega peticion de negocio aun sin abrir TLS hacia el validador
+    Handler->>+Log: Anota metadatos utiles sin volcar secretos en log
+    Note right of Log: Si PRINT_LOGS encendido solo campos permitidos
+    Log-->>-Handler: Sigue el pipeline
+    Handler->>+Canal: Pregunta quien es el validador URL llaves y modo de cifrado
+    Canal-->>-Handler: Responde configuracion del canal desde Dynamo
+    Handler->>Crypto: Cierra paquete cifrado y firmado para el validador
+    Note right of Crypto: Politica AES viene del canal no del cliente HTTP
+    Crypto-->>Handler: Sobre listo para meter en el tunel TLS
+    Handler->>+Http: Pide abrir HTTPS hacia la URL del validador con el cuerpo cifrado
+    Http->>Http: TLS el validador enseña el carné Node valida cadena contra CA del EFS de Telered
+    Note right of Http: Proxy verifica en Lista Negra CRL si el validador sigue siendo de confianza
+    Http->>+Target: POST por tunel TLS solo si cadena OK y serial no revocado
+    Target-->>-Http: Respuesta HTTP del validador por el mismo tunel
+    Http-->>-Handler: Codigo de estado cabeceras y cuerpo en Buffers
+    Handler-->>-Client: Respuesta consolidada al sistema que invoco el Proxy</pre>
+        </div>
+        <h4 class="h6 mt-3">Lectura de cada tramo (seguridad, no solo orden de llamadas)</h4>
+        <ol class="small">
+          <li><strong>Cliente → Handler:</strong> entrada por API Gateway u orígen equivalente. Aún no existe el socket TLS hacia el validador; solo validamos el evento y correlación.</li>
+          <li><strong>Handler → Logger:</strong> evita fugas por logs (equivalente a controlar qué grita el operador en una sala acotada).</li>
+          <li><strong>Handler → Canal (DynamoDB):</strong> resuelve <em>quién</em> es el validador en red (URL) y <em>con qué claves y modo</em> debe cifrarse el mensaje de aplicación.</li>
+          <li><strong>Handler → OperacionesPaquete:</strong> cifrado híbrido de negocio; el transporte TLS aún no sustituye esto: son capas que se suman.</li>
+          <li><strong>Handler → HttpClient:</strong> aquí empieza el <strong>cliente TLS</strong> de Node: CA fijas, timeouts, y política CRL antes de <code>req.end()</code>.</li>
+          <li><strong>HttpClient ↔ Target:</strong> túnel TLS; si el certificado del servidor no cuadra con nuestras CA o está revocado, <strong>no</strong> se envía el cuerpo HTTP de aplicación.</li>
+        </ol>
+        <div class="alert alert-danger" role="alert">
+          <strong>Orden crítico:</strong> la CRL se consulta <em>después</em> del handshake (necesitamos el certificado del peer en el socket) y <em>antes</em> de enviar el cuerpo HTTP.
+          Enviar el body y revocar después implica que datos sensibles podrían haber salido hacia un extremo que ya no deberíamos tratar como válido.
+        </div>
+        <h4 class="h6 mt-3">Cold start vs invocación cálida</h4>
+        <ul class="small">
+          <li><strong>Cold start:</strong> Node carga módulos, inicializa el singleton del <code>Agent</code>, lee CA desde disco (EFS) y compila rutas de dependencias. Puede añadir cientos de ms a pocos segundos según tamaño de imagen y latencia EFS.</li>
+          <li><strong>Warm:</strong> el <code>Agent</code> y conexiones keep-alive reutilizables acortan el camino; el handshake puede reutilizar sesión TLS si el servidor lo permite, pero siempre debemos revalidar CRL según política (aquí en cada nueva conexión segura).</li>
+          <li><strong>Qué pasa si no precargamos nada:</strong> cada request pagaría lecturas repetidas de disco; el singleton mitiga abriendo el agente una sola vez por contenedor.</li>
+        </ul>
+        <h4 class="h6 mt-3">Tabla de errores esperados y manejo en <code>app.js</code></h4>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle small">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Punto de fallo</th>
+                <th scope="col">Tipo / mensaje típico</th>
+                <th scope="col">Efecto en el handler</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Handshake TLS (CA incorrecta)</td>
+                <td><code>UNABLE_TO_VERIFY_LEAF_SIGNATURE</code>, <code>SELF_SIGNED_CERT_IN_CHAIN</code></td>
+                <td>Se propaga error de red; telemetría registra fase <code>tls_handshake</code> con el <code>correlationId</code>.</td>
+              </tr>
+              <tr>
+                <td>CRL ausente o corrupta</td>
+                <td>Errores de lectura/parseo desde EFS</td>
+                <td>Se aborta antes de enviar body; evita tráfico hacia un peer no verificable en revocación.</td>
+              </tr>
+              <tr>
+                <td>Certificado revocado</td>
+                <td><code>CERT_REVOKED</code> (definido en <code>errors.js</code>)</td>
+                <td>400/502 según capa; el cliente no debe reintentar ciegamente: requiere intervención de PKI.</td>
+              </tr>
+              <tr>
+                <td>Timeout de socket</td>
+                <td><code>ETIMEDOUT</code>, <code>ESOCKETTIMEDOUT</code></td>
+                <td>Registrar latencia y revisar seguridad de red/VPC; posible saturación remota.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h4 class="h6 mt-3">Notas de producción / mejores prácticas adicionales</h4>
+        <ul class="small mb-3">
+          <li>Activar alarmas de CloudWatch sobre ratio de errores TLS y latencia p95/p99 del proxy.</li>
+          <li>Versionar CRL y CA con etiquetas de despliegue; documentar ventana de validez y responsable de rotación.</li>
+          <li>Probar siempre en entorno aislado antes de promover CRL nueva: un CRL mal generado puede tumbar todo el tráfico legítimo.</li>
+        </ul>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle bg-white">
+            <thead class="table-dark">
+              <tr>
+                <th>Capa</th>
+                <th>Módulo</th>
+                <th>Rol</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Orquestación</td><td><code>app.js</code></td><td>Handler Lambda: valida evento, orquesta telemetría, cifrado de aplicación y llamada al cliente HTTP.</td></tr>
+              <tr><td>Observabilidad</td><td><code>telemetry.js</code></td><td>Registra micro-fases en DynamoDB para trazas forenses sin PII.</td></tr>
+              <tr><td>Transporte</td><td><code>httpsClient.js</code></td><td>Motor TLS: agente con CA inyectada, timeouts, Promesas; no conoce el dominio de negocio del target.</td></tr>
+              <tr><td>Política PKI</td><td><code>crl.js</code></td><td>Comprueba revocación del <strong>peer</strong> antes de enviar cuerpo sensible.</td></tr>
+              <tr><td>Contratos de fallo</td><td><code>errors.js</code></td><td>Errores tipados para mapeo HTTP y políticas de reintento en el handler.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="alert alert-secondary mb-0 small">
+          El handler distingue <code>TlsHandshakeError</code>, <code>CrlCheckError</code>, <code>RemoteEndpointTimeout</code> y
+          <code>Error('CERT_REVOKED')</code> para decidir códigos HTTP y reintentos. Todo error de red debe llegar como <code>reject</code> de Promesa capturado en el borde del handler.
+        </div>
+        <h4 class="h6 text-secondary mt-4">Mantenimiento del diagrama</h4>
+        <p class="small mb-0">
+          Actualizarlo si <code>app.js</code> reordena telemetría o se añaden capas (WAF, mTLS obligatorio, etc.). Checklist de revisión: ¿CRL sigue antes del body? ¿<code>correlationId</code> cruza todas las fases?
+        </p>
+      </section>
+
+      <section id="handshake-pasos" class="mt-5">
+        <h2 class="h3 border-0 pb-0">2. Handshake TLS en milisegundos — la conversación que ejecuta <code>httpsClient.js</code></h2>
+        <p>
+          Piensa en una llamada telefónica: primero descuelgas y compruebas que quien responde es quien esperas; <strong>después</strong> dices el secreto de negocio.
+          En modo <strong>cliente TLS</strong>, nuestra Lambda descuelga el TCP, negocia TLS y solo entonces HTTP puede mandar el cuerpo.
+          Un <strong>socket</strong> es el “tubo” por el que entran y salen bytes; <strong>TLS</strong> es la capa que cifra y autentifica dentro de ese tubo.
+          Lo que sigue es la misma historia que verás reflejada en los eventos <code>socket</code> y <code>secureConnect</code> del código.
+        </p>
+
+        <div class="wiki-callout-beginner">
+          <div class="wiki-callout-title">Aclaración importante (quién se identifica primero)</div>
+          <p class="small mb-0">
+            En TLS cliente-servidor clásico, el <strong>servidor remoto</strong> (validador) presenta primero su cadena de certificados; el <strong>proxy</strong> la valida con las CA del <code>Agent</code>.
+            El proxy <strong>no</strong> “se identifica” con certificado de cliente salvo que implementemos <strong>mTLS</strong>. No confundir “nuestra Lambda abre la conexión” con “nuestra Lambda presenta certificado primero”: abrir TCP es solo el timbre; el certificado del anfitrión llega en el protocolo TLS.
+          </p>
+        </div>
+
+        <h3 class="h5 mt-4">Paso A — TCP y arranque TLS</h3>
+        <p class="small">
+          <code>https.request</code> abre (o reutiliza) un <strong>socket</strong> TCP hacia IP/puerto del <code>URL</code>. Sobre ese cable, Node negocia TLS: versiones permitidas, conjuntos de cifrado, y presentación de la <strong>cadena del servidor</strong>.
+          El <code>https.Agent</code> con <code>ca: [Buffer, Buffer]</code> dice: “solo confío en cadenas que cuelguen de <em>estas</em> anclas”, no en el almacén genérico del sistema.
+        </p>
+
+        <h3 class="h5 mt-4">Paso B — El validador “enseña carné” y nosotros verificamos la firma</h3>
+        <p class="small">
+          Tras <code>secureConnect</code>, el socket expone <code>getPeerCertificate(true)</code>: obtenemos el documento <strong>X.509</strong> del servidor (y a veces la cadena). Node ya ha comprobado durante el handshake que las firmas matemáticas encajan con las CA que cargamos; si no, la conexión ni siquiera llega a “segura”.
+          Este paso responde a: <strong>¿este carné lo emitió nuestra PKI o es de otro club?</strong>
+        </p>
+
+        <h3 class="h5 mt-4">Paso C — Lista negra CRL antes del cuerpo HTTP</h3>
+        <p class="small">
+          Un certificado puede ser formalmente válido y aun así estar <strong>revocado</strong> (clave robada, emisión errónea). <code>crl.js</code> lee el fichero CRL en EFS, parsea los seriales revocados y compara con el <strong>serial number</strong> del certificado del peer.
+          Solo si el serial <strong>no</strong> aparece en la lista, <code>httpsClient</code> llama a <code>req.write</code>/<code>req.end</code> con el cuerpo. Así el orden seguridad es: <strong>cadena OK → no revocado → entonces datos de negocio</strong>.
+        </p>
+        <p class="small text-muted">
+          Cuando llega la <strong>respuesta</strong>, el servidor no manda todo el mensaje de golpe: lo envía en trozos por un <strong>stream</strong> (flujo).
+          El código va guardando cada trozo en un array y al final los junta con <code>Buffer.concat</code>: es la analogía de las <strong>cubetas</strong> que mencionamos en la sección de <code>httpsClient.js</code> — primero recoges pétalos, luego tienes el ramo completo para leerlo.
+        </p>
+
+        <div class="wiki-callout-beginner">
+          <div class="wiki-callout-title">Analogía rápida — Man-in-the-middle (MITM)</div>
+          <p class="small mb-0">
+            Sin CA correctas y CRL, un atacante en la ruta de red podría intentar terminar TLS en un servidor propio y reenviar tráfico. Las CA corporativas + CRL son el mecanismo para que nuestra Lambda <strong>no acepte</strong> ese “doble aparcamiento” como si fuera el validador legítimo.
+          </p>
+        </div>
+      </section>
+
+      <section id="crl-flujo" class="mt-5">
+        <h2 class="h3 border-0 pb-0">3. CRL, serial number y el flujo interno de <code>crl.js</code></h2>
+        <p>
+          La Lambda <strong>no redacta</strong> la lista negra: la escribe el equipo de PKI (o proceso automático) y la CA la <strong>firma</strong>.
+          Ese archivo vive en EFS en la ruta <code>LIB_RUTA_ARCHIVO_CRL</code>. Cuando alguien revoca un certificado en la infraestructura, el fichero se actualiza; nuestro código solo <strong>lee y obedece</strong> lo que ya está impreso ahí.
+        </p>
+
+        <h3 class="h5 mt-4">¿Cómo sabe el código que un certificado está “robado” o inválido para nosotros?</h3>
+        <p class="small">
+          El programa no hace detective: no sabe si fue robo, pérdida o error humano.
+          Solo mira el <strong>número de serie</strong> del certificado que acaba de ver en TLS y pregunta: <em>¿está este número en la CRL?</em> Si sí, rechaza con <code>CERT_REVOKED</code>.
+          Si el archivo CRL está dañado o no cuadra criptográficamente, preferimos <strong>fallar cerrado</strong> (no enviar tráfico “por si acaso”).
+        </p>
+
+        <h3 class="h5 mt-4">Serial number — el “ADN” del certificado en esta comprobación</h3>
+        <p class="small">
+          Cada certificado X.509 lleva un <strong>número de serie</strong> elegido por la emisora. No es secreto; es un <strong>identificador único dentro de esa CA</strong> para ese documento concreto.
+          Dos certificados distintos (aunque el mismo sujeto) tendrán seriales distintos. Por eso la CRL enumera <strong>seriales revocados</strong>: es la forma compacta de decir “este documento concreto, aunque aún no haya expirado por fecha, ya no debe usarse”.
+          OpenSSL y Node pueden mostrar el serial con formatos ligeramente distintos (hex con o sin <code>:</code>, ceros a la izquierda); <code>normalizeSerial</code> en <code>crl.js</code> alinea representaciones para comparar manzanas con manzanas.
+        </p>
+
+        <h3 class="h5 mt-4">Caché en memoria y TTL</h3>
+        <p class="small">
+          Leer y parsear un CRL grande en cada petición sería lento y presionaría EFS. El módulo mantiene en RAM el conjunto de seriales revocados hasta que expira el TTL (<code>PROXY_CRL_CACHE_TTL_MS</code>).
+          Trade-off explícito: TTL alto = menos I/O, pero revocaciones nuevas tardan más en verse; TTL bajo = más frescor, más lecturas.
+        </p>
+
+        <p class="small text-muted mb-0">
+          La implementación comentada línea a línea está en la sección <a href="#codigo-crl-bloque">código de <code>crl.js</code></a> más abajo.
+        </p>
+      </section>
+
+      <section id="codigo-fuente" class="mt-5">
+        <h2 class="h3 border-0 pb-0">4. Código fuente por módulo (copiable al repo)</h2>
+        <p class="small text-muted">
+          Directorio sugerido: <code>lambdas/proxy/lib/</code>. Dependencias: <code>asn1js</code>, <code>pkijs</code>, <code>@aws-sdk/client-dynamodb</code>,
+          <code>@aws-sdk/lib-dynamodb</code>. Los módulos <code>errors.js</code>, <code>telemetry.js</code>, <code>crl.js</code> (política CRL en disco; nombre corto alineado al dominio PKI «Certificate Revocation List») y <code>httpsClient.js</code> forman el plano de transporte.
+          Cada bloque conserva el <strong>fuente exacto</strong> para copiar al repo; incluye <strong>razón del nombre</strong>, niveles de complejidad y notas sobre Promesas, buffers y sockets sin acoplar al dominio del <em>target</em> remoto.
+        </p>
+
+        <!-- errors.js -->
+        <h3 class="h5 mt-4"><code>errors.js</code></h3>
+        <h4 class="h6 text-secondary">Razón del nombre</h4>
+        <p class="small">
+          Un solo archivo con el <strong>diccionario de fallos del plano de transporte</strong> evita “magic strings” dispersos. Sigue la práctica común en Node y en APIs HTTP:
+          subtipos de <code>Error</code> con <code>name</code> y <code>code</code> estables para <code>instanceof</code> y logs estructurados (OpenTelemetry, CloudWatch Logs Insights).
+        </p>
+        <h4 class="h6 text-secondary">De lo simple a lo complejo</h4>
+        <ol class="small">
+          <li><strong>Nivel 1:</strong> cada clase extiende <code>Error</code> y añade un <code>code</code> corto para switches en <code>app.js</code>.</li>
+          <li><strong>Nivel 2:</strong> metadatos opcionales (<code>cause</code>, detalles no sensibles) se adjuntan al objeto para diagnóstico sin exponerlos al cliente HTTP.</li>
+          <li><strong>Nivel 3:</strong> mantener la jerarquía plana (pocas clases) reduce acoplamiento; si el dominio crece, se puede introducir una clase base <code>TransportError</code> sin romper firmas.</li>
+        </ol>
+        <p class="small text-muted">
+          <strong>Ampliación — Razón del nombre:</strong> centralizar errores en <code>errors.js</code> es como tener un <em>catálogo de códigos de avería</em> del motor: el taller (<code>app.js</code>) sabe qué pieza cambiar sin adivinar textos libres.
+          <strong>Qué problema resuelve:</strong> respuestas HTTP coherentes y métricas filtrables por <code>err.code</code>. <strong>Si no lo hacemos:</strong> cada desarrollador inventa strings distintos y los runbooks de guardia se vuelven inútiles.
+        </p>
+        <p class="small text-muted">
+          <strong>Ampliación — De lo simple a lo complejo:</strong> empezamos por heredar de <code>Error</code> porque Node y V8 ya serializan <code>name</code>, <code>message</code> y <code>stack</code>; añadimos <code>code</code> estable para integraciones con SIEM.
+          Las Promesas del cliente TLS harán <code>reject</code> con instancias de estas clases o con <code>Error('CERT_REVOKED')</code> (caso especial de revocación); el handler debe tratar ambos caminos.
+        </p>
+        <h4 class="h6 text-secondary">Explicación línea por línea del código (para dummies)</h4>
+        <ul class="small">
+          <li><strong><code>'use strict'</code>:</strong> activa reglas más estrictas de JavaScript; reduce errores silenciosos en módulos compartidos.</li>
+          <li><strong>Comentario de cabecera:</strong> documenta el alcance (TLS, CRL, timeouts) para quien abre el archivo sin contexto.</li>
+          <li><strong><code>TlsHandshakeError</code>:</strong> el constructor llama a <code>super(message)</code> para poblar el mensaje humano; fija <code>name</code> para <code>instanceof</code> y <code>code</code> corto para switches; <code>Object.assign(this, meta)</code> adjunta campos extra (p. ej. <code>cause</code>) sin romper la firma.</li>
+          <li><strong><code>CrlCheckError</code>:</strong> mismo patrón, distinto <code>code</code> (<code>CRL_CHECK</code>) para separar fallos de PKI de fallos de red pura.</li>
+          <li><strong><code>RemoteEndpointTimeout</code>:</strong> distingue “el servidor tardó demasiado” de “el certificado es inválido”; importante para alarmas y reintentos idempotentes.</li>
+          <li><strong><code>module.exports</code>:</strong> exportación explícita CommonJS, alineada al resto de la Lambda.</li>
+        </ul>
+        <div class="alert alert-info small" role="alert">
+          <strong>Posibles mejoras:</strong> añadir <code>Symbol.for('TransportError')</code> para duck-typing defensivo; enriquecer <code>meta</code> con <code>correlationId</code> solo si no filtra PII; tests unitarios que aserten <code>err.code</code> estable entre versiones.
+        </div>
+        <div class="border border-secondary rounded overflow-hidden bg-dark mb-5 wiki-code-scroll">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-bottom border-secondary">
+            <span class="small text-white-50 font-monospace">lambdas/proxy/lib/errors.js</span>
+            <button type="button" class="btn btn-sm btn-outline-light wiki-copy-btn" data-wiki-copy-for="wiki-code-errors-js" aria-label="Copiar errors.js">Copiar</button>
+          </div>
+          <pre class="wiki-samconfig-pre mb-0 p-3 text-light bg-dark rounded-0"><code id="wiki-code-errors-js">'use strict';
+
+/**
+ * Fallos tipados del plano de transporte (TLS, CRL, timeouts hacia el endpoint remoto).
+ * El handler usa instanceof / err.code para mapear a HTTP y telemetría.
+ */
+class TlsHandshakeError extends Error {
+  constructor(message, meta = {}) {
+    super(message);
+    this.name = 'TlsHandshakeError';
+    this.code = 'TLS_HANDSHAKE';
+    Object.assign(this, meta);
+  }
+}
+
+class CrlCheckError extends Error {
+  constructor(message, meta = {}) {
+    super(message);
+    this.name = 'CrlCheckError';
+    this.code = 'CRL_CHECK';
+    Object.assign(this, meta);
+  }
+}
+
+/** Timeout al establecer TLS o al esperar respuesta HTTP del peer remoto */
+class RemoteEndpointTimeout extends Error {
+  constructor(message, meta = {}) {
+    super(message);
+    this.name = 'RemoteEndpointTimeout';
+    this.code = 'REMOTE_ENDPOINT_TIMEOUT';
+    Object.assign(this, meta);
+  }
+}
+
+module.exports = {
+  TlsHandshakeError,
+  CrlCheckError,
+  RemoteEndpointTimeout,
+};
+</code></pre>
+        </div>
+        <h4 class="h6 text-secondary mt-3">Notas de producción / mejores prácticas adicionales (<code>errors.js</code>)</h4>
+        <ul class="small mb-5">
+          <li>No loguear stacks completos al cliente HTTP; solo al backend de observabilidad con redacción.</li>
+          <li>Documentar en el runbook el mapa <code>code</code> → HTTP status para guardias.</li>
+          <li><strong>Seguridad:</strong> nunca incluir thumbprints o DN completos del certificado en el mensaje público de error.</li>
+        </ul>
+
+        <!-- telemetry.js -->
+        <h3 class="h5 mt-4"><code>telemetry.js</code></h3>
+        <h4 class="h6 text-secondary">Razón del nombre</h4>
+        <p class="small">
+          “Telemetry” es el término estándar en observabilidad para <strong>señales de comportamiento del sistema</strong> (no métricas de negocio). Aquí persiste una línea de tiempo
+          por <code>correlationId</code> en DynamoDB, alineado a auditoría e investigación post-incidente (quién falló primero: TLS, CRL o HTTP).
+        </p>
+        <h4 class="h6 text-secondary">De lo simple a lo complejo</h4>
+        <ol class="small">
+          <li><strong>Nivel 1:</strong> cada llamada <code>emit</code> escribe un item con fase y resultado (<code>OK</code>/<code>FAIL</code>).</li>
+          <li><strong>Nivel 2:</strong> el SDK v3 serializa tipos; <code>removeUndefinedValues</code> evita atributos vacíos en la tabla.</li>
+          <li><strong>Nivel 3:</strong> el fallo de telemetría no debe ocultar el error principal: se registra en consola y el flujo de negocio sigue su <code>reject</code> o respuesta de error.</li>
+        </ol>
+        <p class="small text-muted">
+          <strong>Ampliación — Razón del nombre:</strong> “telemetry” evita confundir estas trazas con métricas de negocio (facturación, usuarios). Es la <em>cinta negra</em> del vuelo: orden temporal de fases técnicas.
+          <strong>Qué problema resuelve:</strong> reconstruir incidentes cuando el cliente solo ve un 502 genérico. <strong>Si no lo hacemos:</strong> debates interminables sobre “si falló TLS o la red corporativa”.
+        </p>
+        <p class="small text-muted">
+          <strong>Ampliación — De lo simple a lo complejo:</strong> DynamoDB ofrece escritura baja latencia y esquema flexible por item; <code>removeUndefinedValues</code> evita que el SDK envíe atributos vacíos que algunos validadores rechazan.
+          El <code>try/catch</code> interno es deliberado: si la tabla está caída, el negocio no debe fingir éxito, pero tampoco perder la señal del error original ya capturado arriba.
+        </p>
+        <h4 class="h6 text-secondary">Explicación línea por línea del código (para dummies)</h4>
+        <ul class="small">
+          <li><strong>Imports AWS SDK v3:</strong> cliente “pelado” + capa document para objetos JS nativos.</li>
+          <li><strong><code>TABLE</code>:</strong> nombre de tabla desde entorno con default local; en prod debe venir del template SAM/SSM.</li>
+          <li><strong><code>DynamoDBDocumentClient.from</code>:</strong> configura marshalling; <code>removeUndefinedValues: true</code> limpia propiedades <code>undefined</code> del item.</li>
+          <li><strong>JSDoc de <code>emit</code>:</strong> contrato para quien llama: fases sugeridas y forma del evento.</li>
+          <li><strong>Construcción de <code>item</code>:</strong> <code>timestamp</code> en epoch ms facilita ordenación en consultas; <code>outcome</code> default <code>OK</code>.</li>
+          <li><strong><code>PutCommand</code>:</strong> escritura idempotente por clave compuesta si el diseño de tabla lo permite (según PK/SK del proyecto).</li>
+          <li><strong><code>catch</code>:</strong> solo <code>console.error</code> — no relanza, para no enmascarar el error de negocio que ya va camino al cliente.</li>
+        </ul>
+        <div class="alert alert-warning small" role="alert">
+          <strong>Seguridad:</strong> el campo <code>detail</code> debe evitar payloads, DN largos o cabeceras con tokens. Preferir hashes o códigos cortos. Cumplimiento: revisar retención TTL en la tabla y cifrado KMS en reposo.
+        </div>
+        <div class="border border-secondary rounded overflow-hidden bg-dark mb-5 wiki-code-scroll">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-bottom border-secondary">
+            <span class="small text-white-50 font-monospace">lambdas/proxy/lib/telemetry.js</span>
+            <button type="button" class="btn btn-sm btn-outline-light wiki-copy-btn" data-wiki-copy-for="wiki-code-telemetry-js" aria-label="Copiar telemetry.js">Copiar</button>
+          </div>
+          <pre class="wiki-samconfig-pre mb-0 p-3 text-light bg-dark rounded-0"><code id="wiki-code-telemetry-js">'use strict';
+
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
+
+const TABLE =
+  process.env.PROXY_TELEMETRY_TABLE || 'tld-validador-proxy-telemetry';
+
+const doc = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
+  marshallOptions: { removeUndefinedValues: true },
+});
+
+/**
+ * Fases sugeridas: Handshake_Start, CRL_Check, HTTP_Request, HTTP_Response, Error
+ * @param {{ correlationId: string, phase: string, outcome?: string, durationMs?: number, detail?: object }} evt
+ */
+async function emit(evt) {
+  const item = {
+    correlationId: evt.correlationId,
+    timestamp: Date.now(),
+    phase: evt.phase,
+    outcome: evt.outcome ?? 'OK',
+    durationMs: evt.durationMs,
+    detail: evt.detail ?? {},
+  };
+  try {
+    await doc.send(
+      new PutCommand({
+        TableName: TABLE,
+        Item: item,
+      })
+    );
+  } catch (err) {
+    console.error('[telemetry]', err.message);
+  }
+}
+
+module.exports = { emit };
+</code></pre>
+        </div>
+        <h4 class="h6 text-secondary mt-3">Notas de producción / mejores prácticas adicionales (<code>telemetry.js</code>)</h4>
+        <ul class="small mb-5">
+          <li>Definir GSI por <code>correlationId</code> + <code>timestamp</code> si las consultas forenses son frecuentes.</li>
+          <li>Alarmar sobre throttling de DynamoDB y errores <code>[telemetry]</code> en logs (indican pérdida de trazas).</li>
+          <li><strong>Rendimiento:</strong> cada <code>emit</code> es I/O de red; agrupar fases en un solo item solo si el negocio lo permite (trade-off de granularidad).</li>
+        </ul>
+
+        <!-- crl.js — política de revocación (CRL) -->
+        <h3 class="h5 mt-4" id="codigo-crl-bloque"><code>crl.js</code> <span class="text-muted small fw-normal">(lista de revocación / CRL)</span></h3>
+        <h4 class="h6 text-secondary">Razón del nombre</h4>
+        <p class="small">
+          <code>crl</code> es la abreviatura estándar de la industria para <strong>Certificate Revocation List</strong>: cualquier ingeniero PKI reconoce el archivo sin abrirlo.
+          El módulo aplica la <strong>política</strong> (¿este serial del <em>peer</em> remoto está revocado?) frente al artefacto en EFS; no es un cliente HTTP ni transporte.
+        </p>
+        <h4 class="h6 text-secondary">De lo simple a lo complejo</h4>
+        <ol class="small">
+          <li><strong>Nivel 1:</strong> lee el fichero de CRL desde la ruta en EFS indicada por entorno.</li>
+          <li><strong>Nivel 2:</strong> parsea DER con <code>asn1js</code> + <code>pkijs</code> (mismo enfoque que herramientas PKI estándar); extrae seriales revocados.</li>
+          <li><strong>Nivel 3:</strong> la <strong>caché en memoria</strong> (TTL 5 min por defecto) reduce lecturas repetidas al mismo volumen EFS dentro del contenedor caliente de Lambda; invalida por ruta y expiración.</li>
+          <li><strong>Nivel 4:</strong> normalización del <code>serialNumber</code> del peer (OpenSSL puede devolver hex con <code>:</code> o padding) frente a los seriales de la CRL; afinar reglas de igualdad según la PKI corporativa.</li>
+        </ol>
+        <p class="small text-muted">
+          <strong>Ampliación — Razón del nombre:</strong> un nombre de tres letras coincide con RFC 5280 y con herramientas (<code>openssl crl</code>, repositorios que exponen <code>.crl</code>). El equipo de seguridad audita un solo módulo para la política de revocación frente al volumen montado.
+        </p>
+        <p class="small text-muted">
+          <strong>Ampliación — De lo simple a lo complejo:</strong> la CRL es una lista firmada por la CA; leerla desde EFS simula el patrón “operaciones montan secretos en volumen”, sin meter PEM en variables de entorno.
+          La caché TTL equilibra frescor de revocación vs presión sobre EFS y latencia. <strong>CRL muy grande:</strong> el heap de Node crecerá con el <code>Set</code> implícito en el array de seriales; valorar streaming o índice en disco si supera cientos de miles de entradas.
+          <strong>Si el archivo CRL no se actualiza:</strong> seguiremos confiando en revocaciones viejas → riesgo de aceptar certificados ya revocados hasta que expire TTL y se relea el fichero.
+        </p>
+        <p class="small text-muted">El bloque copiable siguiente está <strong>comentado en el propio código</strong> (lectura línea a línea al pegar en el repo).</p>
+        <div class="alert alert-info small" role="alert">
+          <strong>Evolución futura (OCSP):</strong> OCSP consulta en línea el estado del certificado; requiere disponibilidad del respondedor y endurece la superficie de red. OCSP stapling reduce carga al cliente pero depende del servidor remoto. Mantener CRL como baseline suele ser más simple en entornos controlados con EFS.
+        </div>
+        <div class="border border-secondary rounded overflow-hidden bg-dark mb-5 wiki-code-scroll">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-bottom border-secondary">
+            <span class="small text-white-50 font-monospace">lambdas/proxy/lib/crl.js</span>
+            <button type="button" class="btn btn-sm btn-outline-light wiki-copy-btn" data-wiki-copy-for="wiki-code-crl-js" aria-label="Copiar crl.js">Copiar</button>
+          </div>
+          <pre class="wiki-samconfig-pre mb-0 p-3 text-light bg-dark rounded-0"><code id="wiki-code-crl-js">'use strict';
+
+// fs.promises: API basada en Promesas; readFile delega al hilo de I/O sin bloquear el event loop de Node de forma prolongada.
+const fs = require('fs').promises;
+// asn1js + pkijs: decodifican el CRL en formato DER (binario) a estructura con lista de seriales revocados.
+const asn1 = require('asn1js');
+const { CertificateRevocationList } = require('pkijs');
+const { CrlCheckError } = require('./errors');
+
+// TTL_MS: cuántos ms reutilizar en RAM la lista parseada; equilibrio EFS vs frescor de revocación.
+const TTL_MS = parseInt(process.env.PROXY_CRL_CACHE_TTL_MS || '300000', 10);
+
+// Estado a nivel de módulo: sobrevive entre invocaciones warm del mismo contenedor Lambda (no entre instancias distintas).
+let cache = { serials: null, path: null, expiresAt: 0 };
+
+// Convierte bytes crudos del campo serial en la CRL a cadena hex homogénea para comparar.
+function bufferToHex(buf) {
+  return Array.from(new Uint8Array(buf), (b) =>
+    ('00' + b.toString(16)).slice(-2)
+  )
+    .join('')
+    .toUpperCase();
+}
+
+// Unifica serial del certificado (Node) y de la CRL: quita ':', ceros a la izquierda, mayúsculas.
+function normalizeSerial(s) {
+  if (s == null || s === '') return '';
+  return String(s).replace(/:/g, '').replace(/^0+/, '').toUpperCase();
+}
+
+async function loadRevokedSerials() {
+  const path = process.env.LIB_RUTA_ARCHIVO_CRL;
+  if (!path) throw new CrlCheckError('LIB_RUTA_ARCHIVO_CRL is not set');
+
+  const now = Date.now();
+  // Caché válida: misma ruta de archivo y TTL no expirado → evita releer y reparsing del DER.
+  if (cache.serials && cache.path === path && now &lt; cache.expiresAt) {
+    return cache.serials;
+  }
+
+  // crlData: Buffer con el fichero CRL completo leído desde EFS (o disco local en dev).
+  const crlData = await fs.readFile(path);
+  // ArrayBuffer vista del Buffer para el parser BER/ASN.1.
+  const asn1crl = asn1.fromBER(new Uint8Array(crlData).buffer);
+  const crl = new CertificateRevocationList({ schema: asn1crl.result });
+
+  const serials = [];
+  if (crl.revokedCertificates) {
+    for (const { userCertificate } of crl.revokedCertificates) {
+      // valueHexView: slice de bytes del serial revocado tal como viene en el ASN.1.
+      const hex = bufferToHex(userCertificate.valueBlock.valueHexView);
+      serials.push(normalizeSerial(hex));
+    }
+  }
+
+  cache = { serials, path, expiresAt: now + TTL_MS };
+  return serials;
+}
+
+/**
+ * Comprueba si el certificado del peer (TLS) está en la CRL montada.
+ * @param {object} peerCert salida de tls.Socket.getPeerCertificate(true)
+ */
+async function assertSerialNotRevoked(peerCert) {
+  // serialNumber: identificador del certificado; si falta, no podemos aplicar política de revocación.
+  const serial = normalizeSerial(peerCert.serialNumber);
+  if (!serial) {
+    return Promise.reject(new CrlCheckError('Peer certificate has no serialNumber'));
+  }
+  const revoked = await loadRevokedSerials();
+  // Comparación tolerante a padding entre PKI (documentar con equipo de seguridad).
+  const hit = revoked.some((r) => r === serial || r.endsWith(serial) || serial.endsWith(r));
+  if (hit) {
+    // String fijo para que app.js lo distinga de CrlCheckError (fallo de parseo o archivo).
+    return Promise.reject(new Error('CERT_REVOKED'));
+  }
+}
+
+module.exports = {
+  assertSerialNotRevoked,
+  loadRevokedSerials,
+};
+</code></pre>
+        </div>
+        <h4 class="h6 text-secondary mt-3">Notas de producción / mejores prácticas adicionales (<code>crl.js</code>)</h4>
+        <ul class="small mb-5">
+          <li>Automatizar publicación de CRL al volumen EFS con checksum y verificación previa en staging.</li>
+          <li>Monitorizar tamaño del archivo y tiempo de parseo; picos pueden correlacionarse con cold starts largos.</li>
+          <li><strong>Memoria:</strong> buffers grandes de CRL viven hasta el GC; evitar duplicar en logs.</li>
+        </ul>
+
+        <!-- httpsClient.js -->
+        <h3 class="h5 mt-4"><code>httpsClient.js</code></h3>
+        <p class="small">
+          Este archivo es el <strong>cliente HTTPS</strong> del proxy: sabe abrir el túnel TLS hacia la URL del validador, pero no sabe nada de reglas de negocio.
+          El nombre lleva <code>https</code> porque usa el módulo oficial de Node (<code>require('https')</code>), no una librería envuelta donde no ves el socket.
+        </p>
+
+        <h4 class="h6 text-secondary">Por qué aparece una <code>Promise</code> (el mundo de la red no es “línea a línea”)</h4>
+        <p class="small">
+          En red, casi nada termina en el mismo instante en que lo pides. Lanzas la petición y el sistema operativo espera respuesta del otro extremo; mientras tanto tu función podría seguir y provocar un lío.
+          Una <strong>Promesa</strong> es un <em>compromiso futuro</em>: “cuando esto termine, o bien tendrás un resultado (<code>resolve</code>) o un error (<code>reject</code>)”.
+          Aquí envolvemos los eventos de bajo nivel (<code>socket</code>, <code>secureConnect</code>, trozos de respuesta) en una sola Promesa para que el resto del código pueda escribir <code>await requestSecure(...)</code> como si fuera una sola operación.
+          La función auxiliar <code>finish</code> evita llamar dos veces a <code>resolve</code> o <code>reject</code> si varios eventos disparan a la vez — un error clásico cuando se mezclan timers y red.
+        </p>
+
+        <h4 class="h6 text-secondary">Timeouts: si nadie contesta, no nos quedamos colgados</h4>
+        <p class="small">
+          Hay <strong>dos relojes</strong> distintos (variables de entorno <code>PROXY_TLS_CONNECT_TIMEOUT_MS</code> y <code>PROXY_HTTP_RESPONSE_TIMEOUT_MS</code>).
+          El primero dice: “si en X milisegundos <strong>no termina el tramo TLS</strong> (como si el validador no levantara el teléfono), cierro la conexión y devuelvo error”.
+          El segundo arranca <strong>después</strong> de que la política PKI haya pasado: “si ya mandé la petición HTTP y en Y segundos no leo la respuesta completa, asumo que el extremo está colgado o la red va mal y corto”.
+          En ambos casos la imagen mental es la misma: <strong>no dejamos al Lambda esperando para siempre</strong>, porque cada invocación cuesta dinero y bloquea recursos.
+        </p>
+
+        <h4 class="h6 text-secondary"><code>Buffer</code>, streams y la respuesta en “cubetas”</h4>
+        <p class="small">
+          Un <strong>Buffer</strong> en Node es un trozo de bytes ya cargado en memoria del proceso, listo para leer o enviar.
+          La respuesta HTTP del validador no llega siempre en un solo paquete: el servidor envía un <strong>stream</strong> (flujo) de datos y Node emite el evento <code>data</code> varias veces.
+          Por eso el código va haciendo <code>chunks.push(c)</code>: cada <code>c</code> es un cachito del mensaje.
+          Al final, <code>Buffer.concat(chunks)</code> vuelca todo en <strong>un solo Buffer</strong> — como ir llenando <strong>cubetas</strong> con lo que cae del cable hasta tener el mensaje entero y poder tratarlo como un bloque único (status, cabeceras ya parseadas por Node, cuerpo en bruto).
+        </p>
+
+        <h4 class="h6 text-secondary">Mapa rápido del módulo (qué pieza hace qué)</h4>
+        <ul class="small">
+          <li><strong><code>getAgent()</code> (singleton):</strong> lee las CA del EFS una vez por contenedor caliente y construye el <code>https.Agent</code> con <code>ca: [Buffer, Buffer]</code> — ahí se fija la regla “solo confío en cadenas ancladas en Telered”.</li>
+          <li><strong><code>keepAlive</code> y <code>maxSockets</code>:</strong> reutilizan TCP/TLS entre invocaciones en el mismo contenedor; sube el techo solo si el validador y la Lambda aguantan más conexiones paralelas.</li>
+          <li><strong>Orden crítico:</strong> tras TLS listo, <code>assertSerialNotRevoked</code> (CRL); solo entonces <code>req.write</code> / <code>req.end</code>. Si la CRL falla, el cuerpo sensible <strong>nunca</strong> sale.</li>
+        </ul>
+        <p class="small text-muted mb-0">Cada línea difícil del fuente está comentada en el bloque <strong>copiable</strong> de abajo (socket, <code>secureConnect</code>, SNI, timers).</p>
+        <div class="alert alert-danger small" role="alert">
+          <strong>Nunca uses</strong> <code>rejectUnauthorized: false</code> en producción para “salir del paso”: anula la identidad del peer y expone a MITM. La vía correcta es inyectar CA y CRL adecuadas.
+        </div>
+        <p class="small text-muted">
+          <strong>Lectura de CA más segura:</strong> envolver <code>readFileSync</code> en try/catch específico, verificar permisos POSIX del mount (solo lectura para el usuario de la Lambda), y rotar archivos con atomic rename en el servidor de origen del EFS.
+          <strong>Logging:</strong> no imprimir buffers PEM ni certificados completos; un fingerprint basta para correlación interna.
+        </p>
+        <div class="border border-secondary rounded overflow-hidden bg-dark mb-4 wiki-code-scroll">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-bottom border-secondary">
+            <span class="small text-white-50 font-monospace">lambdas/proxy/lib/httpsClient.js</span>
+            <button type="button" class="btn btn-sm btn-outline-light wiki-copy-btn" data-wiki-copy-for="wiki-code-httpsclient-js" aria-label="Copiar httpsClient.js">Copiar</button>
+          </div>
+          <pre class="wiki-samconfig-pre mb-0 p-3 text-light bg-dark rounded-0"><code id="wiki-code-httpsclient-js">'use strict';
+
+// Cliente y servidor TLS del núcleo de Node (no dependencias opacas de terceros para el handshake).
+const https = require('https');
+// Lectura síncrona de PEM de CA solo en la creación del Agent (camino poco frecuente tras cold start).
+const fs = require('fs');
+// URL: parsea hostname, path y query para https.request sin regex manuales.
+const { URL } = require('url');
+const { TlsHandshakeError, RemoteEndpointTimeout } = require('./errors');
+const crl = require('./crl');
+
+// Límite para que el handshake TLS (TCP + negociación) no deje la Lambda colgada indefinidamente.
+const CONNECT_MS = parseInt(
+  process.env.PROXY_TLS_CONNECT_TIMEOUT_MS || '12000',
+  10
+);
+// Reloj distinto: una vez enviado el request, cuánto esperamos leer la respuesta completa.
+const RESPONSE_MS = parseInt(
+  process.env.PROXY_HTTP_RESPONSE_TIMEOUT_MS || '60000',
+  10
+);
+
+// Singleton del Agent: los Buffers de CA viven en memoria de proceso entre invocaciones warm.
+let agentSingleton = null;
+
+/**
+ * Crea o reutiliza un https.Agent con CA corporativas (PEM en disco).
+ * rejectUnauthorized sigue true por defecto de Node; ca restringe qué cadenas son válidas.
+ */
+function getAgent() {
+  if (agentSingleton) return agentSingleton;
+  const caPath = process.env.LIB_RUTA_ARCHIVO_CA;
+  const subPath = process.env.LIB_RUTA_ARCHIVO_CA_SUB;
+  if (!caPath || !subPath) {
+    throw new TlsHandshakeError(
+      'Missing LIB_RUTA_ARCHIVO_CA or LIB_RUTA_ARCHIVO_CA_SUB'
+    );
+  }
+  // ca: array de Buffers PEM; Node los usa durante la verificación de cadena en el handshake.
+  const ca = [fs.readFileSync(caPath), fs.readFileSync(subPath)];
+  agentSingleton = new https.Agent({
+    ca,
+    keepAlive: true, // reutiliza conexiones TCP en el mismo proceso (menos handshakes repetidos).
+    maxSockets: 32,
+    maxFreeSockets: 8,
+  });
+  return agentSingleton;
+}
+
+/**
+ * HTTPS saliente: body no sale hasta TLS estable + CRL OK (ver afterTls).
+ * opts: method, url, headers, body (Buffer o string).
+ */
+function requestSecure(opts) {
+  const method = opts.method || 'POST';
+  const url = opts.url;
+  const headers = opts.headers || {};
+  const body = opts.body;
+  const agent = getAgent();
+  const u = new URL(url);
+
+  // Envolvemos eventos de ClientRequest en una Promesa para usar async/await en el handler.
+  return new Promise((resolve, reject) => {
+    let finished = false;
+    const finish = (err, val) => {
+      if (finished) return;
+      finished = true;
+      if (err) reject(err);
+      else resolve(val);
+    };
+
+    const req = https.request(
+      {
+        hostname: u.hostname,
+        port: u.port || 443,
+        path: u.pathname + u.search,
+        method,
+        headers,
+        agent,
+        servername: u.hostname, // SNI: nombre que el servidor espera en el handshake TLS.
+      },
+      (res) => {
+        // res es IncomingMessage (stream legible): llega en trozos 'data' hasta 'end'.
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c)); // c es Buffer por defecto en binario
+        res.on('end', () => {
+          finish(null, {
+            statusCode: res.statusCode,
+            headers: res.headers,
+            body: Buffer.concat(chunks), // un solo Buffer con el cuerpo HTTP completo
+          });
+        });
+      }
+    );
+
+    req.on('error', (e) =>
+      finish(new TlsHandshakeError(e.message, { cause: e }))
+    );
+
+    const connectTimer = setTimeout(() => {
+      req.destroy();
+      finish(new RemoteEndpointTimeout('TLS connect timeout'));
+    }, CONNECT_MS);
+
+    // 'socket': primer handle TCP subyacente; aquí enganchamos el ciclo de vida TLS real.
+    req.once('socket', (socket) => {
+      const afterTls = async () => {
+        clearTimeout(connectTimer);
+        try {
+          // Certificado del peer (servidor remoto); true pide cadena cuando Node la expone.
+          const cert = socket.getPeerCertificate(true);
+          if (!cert || Object.keys(cert).length === 0) {
+            req.destroy();
+            finish(new TlsHandshakeError('No peer certificate'));
+            return;
+          }
+          // Política de revocación: lee CRL en EFS y compara serial (sección 3 de esta página).
+          await crl.assertSerialNotRevoked(cert);
+
+          req.setTimeout(RESPONSE_MS, () => {
+            req.destroy();
+            finish(new RemoteEndpointTimeout('Response timeout'));
+          });
+
+          // Solo ahora enviamos bytes de aplicación por el túnel ya validado.
+          if (body != null && body !== '') req.write(body);
+          req.end(); // completa la petición HTTP sobre el socket TLS
+        } catch (e) {
+          req.destroy();
+          finish(e);
+        }
+      };
+
+      if (socket.secureConnecting) {
+        // TLS aún en curso: esperamos al evento secureConnect (handshake terminado).
+        socket.once('secureConnect', () => {
+          afterTls().catch((e) => finish(e));
+        });
+      } else {
+        afterTls().catch((e) => finish(e));
+      }
+    });
+  });
+}
+
+module.exports = { requestSecure, getAgent };
+</code></pre>
+        </div>
+        <h4 class="h6 text-secondary mt-3">Notas de producción / mejores prácticas adicionales (<code>httpsClient.js</code>)</h4>
+        <ul class="small mb-0">
+          <li>Pruebas de carga: subir <code>maxSockets</code> solo si el endpoint remoto y la Lambda toleran más conexiones simultáneas.</li>
+          <li>Si el target exige mTLS en el futuro, el agente necesitará <code>cert</code>/<code>key</code>; planificar rutas EFS y rotación.</li>
+          <li><strong>Cold start:</strong> primera llamada a <code>getAgent()</code> + handshake es el pico; considerar warm-up controlado o provisioned concurrency si el SLA es estricto.</li>
+        </ul>
+        <h4 class="h6 text-secondary mt-4">Notas de producción / cierre de la sección de código</h4>
+        <p class="small mb-0">
+          Los cuatro archivos forman un “tubo” de responsabilidades: errores tipados, trazas, revocación y socket TLS. Antes de modificar uno, el equipo debería preguntarse qué capa posee el nuevo comportamiento para no mezclar política PKI con telemetría o con el handler HTTP de API Gateway.
+        </p>
+      </section>
+
+      <section id="variables-efs" class="mt-5">
+        <h2 class="h3 border-0 pb-0">5. Inyección de confianza en el peer (variables y EFS)</h2>
+        <p>
+          Las rutas por defecto coinciden con <code>RutaArchivoCa</code>, <code>RutaArchivoCaSub</code> y <code>RutaArchivoCrl</code> en los
+          <code>template.yaml</code> de referencia (<code>tld-api-p2m</code>, <code>tld-api-cuenta-nombre</code>, <code>tld-api-r2p</code>). El proxy las lee con
+          <code>fs</code> y construye el contexto de confianza del <strong>peer remoto</strong>: no dependen de utilidades de transporte de otros repositorios.
+        </p>
+        <div class="alert alert-primary mb-4" role="alert">
+          <strong>Inyección de confianza:</strong> al pasar los PEM de la CA raíz e intermedia al <code>https.Agent</code> como <code>Buffer</code>,
+          Node valida la cadena del certificado del peer contra esas anclas. Esa es la postura segura por defecto del cliente TLS: <strong>no hace falta</strong>
+          desactivar verificación mediante variables globales del proceso; el diseño correcto es suministrar las CA correctas (y CRL operativa) vía EFS y configuración explícita.
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered table-striped table-hover align-middle bg-white">
+            <thead class="table-dark">
+              <tr>
+                <th>Variable</th>
+                <th>Origen</th>
+                <th>Default (referencia)</th>
+                <th>Rol en la inyección de confianza</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>LIB_RUTA_ARCHIVO_CA</code></td>
+                <td><code>RutaArchivoCa</code> (SAM)</td>
+                <td><code>/mnt/tld-llaves/tld-ca/caroot.cer</code></td>
+                <td>Ancla raíz → <code>Agent.ca[0]</code></td>
+              </tr>
+              <tr>
+                <td><code>LIB_RUTA_ARCHIVO_CA_SUB</code></td>
+                <td><code>RutaArchivoCaSub</code></td>
+                <td><code>/mnt/tld-llaves/tld-ca/casub.cer</code></td>
+                <td>CA intermedia → <code>Agent.ca[1]</code></td>
+              </tr>
+              <tr>
+                <td><code>LIB_RUTA_ARCHIVO_CRL</code></td>
+                <td><code>RutaArchivoCrl</code></td>
+                <td><code>/mnt/tld-llaves/tld-crl/crltelered.crl</code></td>
+                <td>Lista de revocación del peer (parseo en <code>crl.js</code>)</td>
+              </tr>
+              <tr class="table-light">
+                <td><code>PROXY_TLS_CONNECT_TIMEOUT_MS</code></td>
+                <td>Template del proxy</td>
+                <td><code>12000</code></td>
+                <td>Límite de establecimiento TCP+TLS hacia el target</td>
+              </tr>
+              <tr class="table-light">
+                <td><code>PROXY_HTTP_RESPONSE_TIMEOUT_MS</code></td>
+                <td>Template del proxy</td>
+                <td><code>60000</code></td>
+                <td>Límite de lectura de respuesta HTTP</td>
+              </tr>
+              <tr class="table-light">
+                <td><code>PROXY_CRL_CACHE_TTL_MS</code></td>
+                <td>Template del proxy</td>
+                <td><code>300000</code></td>
+                <td>TTL caché CRL en memoria</td>
+              </tr>
+              <tr class="table-light">
+                <td><code>PROXY_TELEMETRY_TABLE</code></td>
+                <td>Template del proxy</td>
+                <td><code>tld-validador-proxy-telemetry</code></td>
+                <td>Tabla DynamoDB de fases de transporte</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="h5 mt-4">Tabla ampliada: importancia, riesgos y producción</h3>
+        <p class="small text-muted">
+          La tabla anterior describe el <em>qué</em> de cada variable; esta complementa con <strong>por qué importa</strong>, <strong>qué falla si falta</strong> y una guía de valores en producción.
+        </p>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle bg-white small">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Variable</th>
+                <th scope="col">Por qué es importante</th>
+                <th scope="col">Riesgo si falta o está mal</th>
+                <th scope="col">Valor recomendado en producción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>LIB_RUTA_ARCHIVO_CA</code></td>
+                <td>Ancla la confianza TLS al PKI corporativo, no al bundle público de Mozilla.</td>
+                <td>Handshake fallido o peor: tentación de desactivar verificación.</td>
+                <td>Ruta EFS inmutable en runtime; archivo PEM controlado por IAM/ops.</td>
+              </tr>
+              <tr>
+                <td><code>LIB_RUTA_ARCHIVO_CA_SUB</code></td>
+                <td>Completa la cadena hasta el leaf emitido por la sub-CA.</td>
+                <td><code>UNABLE_TO_VERIFY_LEAF_SIGNATURE</code> intermitente.</td>
+                <td>Mismo directorio versionado que la raíz; rotación coordinada.</td>
+              </tr>
+              <tr>
+                <td><code>LIB_RUTA_ARCHIVO_CRL</code></td>
+                <td>Detecta certificados comprometidos después de emitidos.</td>
+                <td>Aceptar peers revocados → incidente de seguridad grave.</td>
+                <td>CRL vigente publicada por la CA; TTL de caché acorde a ventana de revocación.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_TLS_CONNECT_TIMEOUT_MS</code></td>
+                <td>Evita workers colgados ante red lenta o SYN flood.</td>
+                <td>Invocaciones Lambda hasta timeout completo (coste y backpressure).</td>
+                <td>8–15s según RTT; ajustar con métricas reales.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_HTTP_RESPONSE_TIMEOUT_MS</code></td>
+                <td>Limita lectura del body de respuesta.</td>
+                <td>Memoria y tiempo de facturación crecen sin límite.</td>
+                <td>30–120s según SLA del endpoint remoto.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_CRL_CACHE_TTL_MS</code></td>
+                <td>Equilibra frescor vs carga a EFS.</td>
+                <td>TTL=0: latencia alta; TTL muy alto: revocaciones tardías.</td>
+                <td>1–15 min según política de la PKI y tamaño de CRL.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_TELEMETRY_TABLE</code></td>
+                <td>Correlación forense por <code>correlationId</code>.</td>
+                <td>Pérdida de visibilidad; no afecta TLS directamente.</td>
+                <td>Nombre parametrizado por entorno (dev/stage/prod).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="h5 mt-4">EFS con AWS Lambda: montaje, rendimiento y seguridad</h3>
+        <p class="small">
+          <strong>EFS (Elastic File System)</strong> es un NFS administrado: la Lambda monta un directorio compartido como si fuera disco local. Nos sirve para CA/CRL sin empaquetarlos en el zip de despliegue (rotación sin redeploy del código).
+        </p>
+        <ul class="small">
+          <li><strong>Montaje en <code>template.yaml</code> (SAM):</strong> en la función Lambda, <code>FileSystemConfigs</code> con <code>Arn</code> del access point o del filesystem, <code>LocalMountPath</code> (p. ej. <code>/mnt/tld-llaves</code>) y permisos de ejecución en rol IAM (<code>elasticfilesystem:ClientMount</code> / <code>ClientWrite</code> solo si hace falta).</li>
+          <li><strong>Performance mode:</strong> <em>General Purpose</em> es el predeterminado y adecuado para latencia baja en metadatos; <em>Max I/O</em> era para cargas muy paralelas legadas (casi siempre GP).</li>
+          <li><strong>Throughput:</strong> modo bursting acumula créditos según tamaño; picos de lectura CRL al cold start consumen crédito. Si la lectura es constante y pesada, valorar throughput provisionado.</li>
+          <li><strong>Cold start:</strong> montar NFS puede añadir típicamente del orden de ~1–3s (variable según región/red); sumar latencia de primera lectura de archivos.</li>
+          <li><strong>Mount options:</strong> usar access points para fijar UID/GID y root directory; restringe blast radius si la función se compromete.</li>
+          <li><strong>Cifrado:</strong> EFS en reposo con KMS; tránsito TLS para “in-transit encryption” cuando se soporta en la config de mount; en VPC, el tráfico NFS va por red privada.</li>
+        </ul>
+        <div class="alert alert-warning small" role="alert">
+          <strong>Permisos:</strong> la política IAM debe referenciar el ARN del filesystem o access point con condiciones de vpc/security group si aplica. Evitar <code>ClientWrite</code> en producción para la Lambda de proxy si solo necesita leer CA/CRL.
+        </div>
+        <p class="small text-muted">Fragmento ilustrativo (comentado) de cómo se expresa el montaje en plantillas tipo SAM; el proyecto real puede usar otra sintaxis o propiedades adicionales:</p>
+        <pre class="bg-dark text-light p-3 rounded small mb-3"><code># Ejemplo educativo — alinear siempre con el template.yaml del proxy en el repo
+# AWS::Serverless::Function
+# Properties:
+#   FileSystemConfigs:
+#     - Arn: arn:aws:elasticfilesystem:REGION:ACCOUNT:access-point/fsap-xxxxxxxx
+#       LocalMountPath: /mnt/tld-llaves
+# Policies:
+#   - Statement:
+#       - Effect: Allow
+#         Action:
+#           - elasticfilesystem:ClientMount
+#           - elasticfilesystem:ClientRead
+#         Resource: "*"</code></pre>
+        <h4 class="h6">Actualizar CA y CRL en EFS sin downtime</h4>
+        <ol class="small">
+          <li>Subir nuevos archivos a rutas temporales en el mismo volumen (<code>.new</code>).</li>
+          <li>Validar integridad (hash, firma CRL, prueba en Lambda de staging montada al mismo AP).</li>
+          <li>Renombrado atómico o swap de symlinks en el servidor de administración del EFS (operación fuera de la Lambda).</li>
+          <li>Forzar nueva revisión de caché: esperar TTL de CRL en memoria o desplegar nueva versión de función si se requiere invalidación inmediata (último recurso).</li>
+          <li>Monitorizar errores TLS y métricas de <code>CrlCheckError</code> durante la ventana de cambio.</li>
+        </ol>
+        <h4 class="h6">Variables de entorno usadas en el plano de transporte (referencia rápida)</h4>
+        <ul class="small mb-3">
+          <li><code>LIB_RUTA_ARCHIVO_CA</code> — ruta PEM/DER de CA raíz para el <code>https.Agent</code>.</li>
+          <li><code>LIB_RUTA_ARCHIVO_CA_SUB</code> — CA intermedia emparejada.</li>
+          <li><code>LIB_RUTA_ARCHIVO_CRL</code> — CRL del peer esperado.</li>
+          <li><code>PROXY_TLS_CONNECT_TIMEOUT_MS</code> — timeout de establecimiento TLS.</li>
+          <li><code>PROXY_HTTP_RESPONSE_TIMEOUT_MS</code> — timeout de lectura HTTP.</li>
+          <li><code>PROXY_CRL_CACHE_TTL_MS</code> — TTL de caché en <code>crl.js</code>.</li>
+          <li><code>PROXY_TELEMETRY_TABLE</code> — tabla DynamoDB para fases de telemetría.</li>
+        </ul>
+        <p class="small text-muted mb-0">
+          Montaje EFS: <code>FileSystemConfigs.LocalMountPath: /mnt/tld-llaves</code> en el <code>template.yaml</code> del proxy.
+        </p>
+        <h4 class="h6 text-secondary mt-4">Notas de producción / mejores prácticas adicionales (sección EFS)</h4>
+        <ul class="small mb-0">
+          <li>Etiquetar el filesystem con cost center y owner; habilitar backup AWS Backup si la PKI lo exige.</li>
+          <li>Probar restauración de volumen y consistencia de paths antes del desastre.</li>
+          <li>Documentar en Confluence el calendario de republicación de CRL y responsables on-call.</li>
+        </ul>
+      </section>
+
+      <section id="rendimiento-lambda" class="mt-5">
+        <h2 class="h3 border-0 pb-0">6. Consideraciones de rendimiento y cold starts en Lambda</h2>
+        <p class="small">
+          El contenedor de Lambda reutiliza el proceso de Node entre invocaciones “calientes”. El <strong>singleton del <code>https.Agent</code></strong> amortiza lectura de CA y mantiene pools de sockets con <code>keepAlive</code>, reduciendo handshakes repetidos hacia el mismo host.
+        </p>
+        <ul class="small">
+          <li><strong>Precarga top-level:</strong> importar módulos pesados al cargar el archivo (no dentro del handler) para pagar parseo una vez por cold start.</li>
+          <li><strong>EFS:</strong> primera lectura desde cold puede ser lenta; mantener archivos pequeños y cercanos al access point root.</li>
+          <li><strong>Provisioned Concurrency:</strong> mantiene contenedores listos; útil si el SLA no tolera cold starts puntuales tras despliegue.</li>
+          <li><strong>SnapStart:</strong> aplica a Java en Lambda, no a Node; mencionado solo para que el equipo no confunda plataformas al leer guías AWS.</li>
+          <li><strong>Concurrencia:</strong> cada instancia tiene su propia caché CRL; los umbrales de revocación dependen del TTL, no de un cache global.</li>
+        </ul>
+        <h4 class="h6 text-secondary">Notas de producción / mejores prácticas adicionales</h4>
+        <ul class="small mb-0">
+          <li>Dashboards: duration, init duration, concurrent executions, EFS <code>MeteredIOBytes</code>.</li>
+          <li>Evitar trabajo duplicado en el handler: mover constantes y clientes AWS fuera de <code>exports.handler</code>.</li>
+        </ul>
+      </section>
+
+      <section id="seguridad-cumplimiento" class="mt-5">
+        <h2 class="h3 border-0 pb-0">7. Seguridad y cumplimiento</h2>
+        <p class="small">
+          <strong>Inyectar CA</strong> mediante <code>agent.ca</code> mantiene la verificación TLS de Node activa (<code>rejectUnauthorized</code> sigue siendo true por defecto). Es preferible a desactivar la verificación o a depender del almacén de certificados del SO dentro de la imagen Lambda, que puede divergir entre versiones de runtime.
+        </p>
+        <ul class="small">
+          <li><strong>CRL vs OCSP:</strong> CRL es lista publicada periódicamente; OCSP es consulta en línea. CRL offline-first encaja con EFS y auditorías donde se quiere evidencia local de la lista usada.</li>
+          <li><strong>Amenazas mitigadas:</strong> MITM con certificado de otra CA, certificados revocados por compromiso de clave, ciertos ataques de downgrade si se combina con buena política de TLS en el servidor remoto.</li>
+          <li><strong>Logging sin PII:</strong> usar <code>correlationId</code>, códigos de error y contadores; no registrar cuerpos ni certificados completos.</li>
+        </ul>
+        <div class="alert alert-danger small" role="alert">
+          Cualquier cambio que relaje TLS (p. ej. aceptar cualquier certificado) debe pasar por revisión de seguridad y arquitectura; documentar excepción y compensación.
+        </div>
+        <h4 class="h6 text-secondary">Notas de producción / mejores prácticas adicionales</h4>
+        <ul class="small mb-0">
+          <li>Threat modeling anual del proxy: superficie de red, EFS, DynamoDB de telemetría, API Gateway.</li>
+          <li>Encriptación en tránsito entre API Gateway → Lambda y Lambda → endpoint remoto revisada en diagramas de arquitectura.</li>
+        </ul>
+      </section>
+
+      <section id="depuracion-troubleshooting" class="mt-5">
+        <h2 class="h3 border-0 pb-0">8. Depuración y troubleshooting</h2>
+        <p class="small">
+          Cuando falle el transporte, seguir el orden <strong>TLS → CRL → HTTP</strong>: primero confirmar que el handshake acepta la cadena, luego que el serial no está en CRL, por último status codes y timeouts de aplicación.
+        </p>
+        <ul class="small">
+          <li><strong>Logs:</strong> buscar mensajes de <code>TlsHandshakeError</code>, <code>CrlCheckError</code>, <code>CERT_REVOKED</code>, <code>RemoteEndpointTimeout</code> en CloudWatch Logs Insights.</li>
+          <li><strong>TLS handshake fallido:</strong> comparar cadena presentada por el servidor (<code>openssl s_client -connect host:443 -showcerts</code> desde un bastión) con las CA montadas en EFS.</li>
+          <li><strong><code>CERT_REVOKED</code>:</strong> verificar que la CRL en EFS es la última emitida y que el serial del certificado coincide tras normalización.</li>
+          <li><strong>Pruebas locales:</strong> montar EFS con Docker/amazonlinux o usar VPN + mount de prueba; alternativa: copiar PEM/CRL temporales con las mismas rutas que en Lambda (solo dev).</li>
+          <li><strong>Herramientas:</strong> <code>curl --cacert</code>, <code>openssl crl</code>, AWS Systems Manager Session Manager para inspeccionar instancias con mount similar.</li>
+        </ul>
+        <h4 class="h6 text-secondary">Notas de producción / mejores prácticas adicionales</h4>
+        <ul class="small mb-0">
+          <li>Crear runbook con queries Insights guardadas por <code>correlationId</code>.</li>
+          <li>Tras incidente, conservar snapshot de CRL y CA usados (hash) para evidencia.</li>
+        </ul>
+      </section>
+
+      <section id="evolucion-proximos-pasos" class="mt-5">
+        <h2 class="h3 border-0 pb-0">9. Evolución y próximos pasos</h2>
+        <p class="small">
+          El diseño actual prioriza TLS nativo, CA/CRL bajo control y telemetría mínima. Líneas evolutivas razonables:
+        </p>
+        <ul class="small">
+          <li><strong>OCSP stapling</strong> en el servidor remoto para aliviar dependencia de CRL grande (el cliente seguiría validando política según lo acordado).</li>
+          <li><strong>mTLS</strong> si el endpoint exige certificado de cliente; requiere gestión de claves y rotación en EFS o Secrets Manager.</li>
+          <li><strong>Rate limiting</strong> en API Gateway o WAF delante del proxy para contener abusos.</li>
+          <li><strong>Pinning de SPKI</strong> solo en casos excepcionales (coste operativo alto de rotación).</li>
+          <li><strong>Tests de contrato</strong> contra un mock TLS con cadena y CRL de prueba en CI.</li>
+        </ul>
+        <h4 class="h6 text-secondary">Notas de producción / mejores prácticas adicionales</h4>
+        <ul class="small mb-0">
+          <li>Roadmap conjunto con el equipo PKI: cadencia de CRL, algoritmos permitidos, longitud de claves.</li>
+          <li>Revisar anualmente dependencias <code>asn1js</code>/<code>pkijs</code> por CVEs.</li>
+        </ul>
+      </section>
+
+      <p class="small text-muted mt-4 mb-1">
+        <strong>Versión del manual:</strong> 1.1 (expandido). <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+      </p>
+      <p class="text-muted small mt-5 mb-0">
+        Cifrado de aplicación: <a href="crypto-app.html">Cifrado App</a>.
+      </p>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tld-validador-proxy — Conectividad Telered y mTLS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/wiki.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <script defer src="js/wiki-init.js"></script>
+  <script defer src="js/menu-sync.js"></script>
+  <script defer src="js/wiki-chrome.js"></script>
+</head>
+<body class="wiki-body bg-light">
+  <div class="wiki-layout">
+    <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
+      <div class="wiki-sidebar-inner p-3 flex-grow-1 overflow-auto">
+        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-1 px-2">
+          <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
+          <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
+        </a>
+        <nav class="nav flex-column wiki-sidebar-nav pt-2" aria-label="Navegación principal">
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🚀</span> PROYECTO</div>
+          <a class="nav-link wiki-nav-link" href="index.html"><span class="wiki-nav-ico" aria-hidden="true">🛡️</span> Misión</a>
+          <a class="nav-link wiki-nav-link" href="flow.html"><span class="wiki-nav-ico" aria-hidden="true">📊</span> Flujo General</a>
+          <a class="nav-link wiki-nav-link" href="data-dictionary.html"><span class="wiki-nav-ico" aria-hidden="true">📖</span> Diccionario de Datos</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">📜</span> INFRAESTRUCTURA</div>
+          <a class="nav-link wiki-nav-link" href="network.html"><span class="wiki-nav-ico" aria-hidden="true">📋</span> samconfig.toml</a>
+          <a class="nav-link wiki-nav-link" href="deployment.html"><span class="wiki-nav-ico" aria-hidden="true">📄</span> template.yaml</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🔐</span> SEGURIDAD</div>
+          <a class="nav-link wiki-nav-link" href="crypto-app.html"><span class="wiki-nav-ico" aria-hidden="true">🔑</span> Cifrado App</a>
+          <a class="nav-link wiki-nav-link wiki-nav-link-parent" href="crypto-transport.html#por-que-diferente"><span class="wiki-nav-ico" aria-hidden="true">🔒</span> Transporte mTLS/CRL</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#por-que-diferente">¿Por qué este túnel?</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#diagrama-interaccion">Diagrama de secuencia</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#codigo-fuente">Código fuente (módulos)</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#variables-efs">Variables y EFS</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#rendimiento-lambda">Rendimiento Lambda</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#seguridad-cumplimiento">Seguridad</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#depuracion-troubleshooting">Depuración</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="crypto-transport.html#evolucion-proximos-pasos">Evolución</a>
+          <a class="nav-link wiki-nav-link active" href="connectivity-telered.html"><span class="wiki-nav-ico" aria-hidden="true">🌐</span> Conectividad Telered</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link active" href="connectivity-telered.html#hallazgos-legacy">Hallazgos legacy</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="connectivity-telered.html#arquitectura-proxy">Arquitectura del Proxy</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="connectivity-telered.html#diagrama-transporte-avanzado">Diagrama transporte</a>
+          <a class="nav-link wiki-nav-sublink wiki-nav-link" href="connectivity-telered.html#modelo-datos-canal">Modelo DynamoDB</a>
+          <div class="wiki-sidebar-section"><span class="wiki-sidebar-section-ico" aria-hidden="true">🛠️</span> COMPONENTES</div>
+          <a class="nav-link wiki-nav-link" href="identity.html"><span class="wiki-nav-ico" aria-hidden="true">👤</span> Identidad (Canal)</a>
+          <a class="nav-link wiki-nav-link" href="logger.html"><span class="wiki-nav-ico" aria-hidden="true">📝</span> Logger</a>
+        </nav>
+      </div>
+    </aside>
+    <main class="wiki-content flex-grow-1">
+      <div class="wiki-mobile-bar d-md-none mb-3">
+        <div class="dropdown">
+          <button class="btn btn-wiki-menu dropdown-toggle w-100 rounded-pill py-2" type="button" data-bs-toggle="dropdown">Menú wiki</button>
+          <ul class="dropdown-menu w-100 shadow border-0">
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🚀</span> PROYECTO</h6></li>
+            <li><a class="dropdown-item" href="index.html">🛡️ Misión</a></li>
+            <li><a class="dropdown-item" href="flow.html">📊 Flujo General</a></li>
+            <li><a class="dropdown-item" href="data-dictionary.html">📖 Diccionario de Datos</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">📜</span> INFRAESTRUCTURA</h6></li>
+            <li><a class="dropdown-item" href="network.html">📋 samconfig.toml</a></li>
+            <li><a class="dropdown-item" href="deployment.html">📄 template.yaml</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🔐</span> SEGURIDAD</h6></li>
+            <li><a class="dropdown-item" href="crypto-app.html">🔑 Cifrado App</a></li>
+            <li><a class="dropdown-item" href="crypto-transport.html#por-que-diferente">🔒 Transporte mTLS/CRL</a></li>
+            <li><a class="dropdown-item active" href="connectivity-telered.html">🌐 Conectividad Telered</a></li>
+            <li><h6 class="dropdown-header"><span aria-hidden="true">🛠️</span> COMPONENTES</h6></li>
+            <li><a class="dropdown-item" href="identity.html">👤 Identidad (Canal)</a></li>
+            <li><a class="dropdown-item" href="logger.html">📝 Logger</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="text-muted small mb-2">
+        <a href="crypto-transport.html">Transporte mTLS/CRL</a> — manual del túnel TLS, <code>httpsClient.js</code> y <code>crl.js</code>.
+        Esta página es la <strong>justificación de proyecto</strong>: qué fallaba en legacy y cómo el Proxy eleva el estándar (solo <strong>capa de transporte</strong> y PKI Telered).
+      </p>
+      <h1 class="h2 mb-2">Conectividad Telered y mTLS</h1>
+      <p class="lead text-muted mb-3">
+        Documento de arquitectura y auditoría: por qué el <strong>tld-validador-proxy</strong> no es un capricho técnico, sino la respuesta medible a riesgos en servicios que hoy alternan <code>axios</code>, <code>tld-util</code> y una variable global <code>URL_CA_TELERED</code>.
+        No se trata aquí del cifrado del payload de negocio, sino del <strong>handshake HTTPS</strong>, las CA/CRL en EFS y el mTLS opcional.
+      </p>
+
+      <nav class="wiki-inpage-toc small" aria-label="En esta página">
+        <div class="fw-semibold mb-2">En esta página</div>
+        <ul class="mb-0">
+          <li><a href="#hallazgos-legacy">1. Por qué el Proxy es necesario (hallazgos legacy)</a></li>
+          <li><a href="#arquitectura-proxy">2. Nueva arquitectura de conectividad</a></li>
+          <li><a href="#diagrama-transporte-avanzado">3. Diagrama de secuencia (transporte avanzado)</a></li>
+          <li><a href="#modelo-datos-canal">4. Modelo de datos en <code>tld-validador-canal</code></a></li>
+        </ul>
+      </nav>
+
+      <section id="hallazgos-legacy" class="mt-4">
+        <h2 class="h3 border-0 pb-0">1. Por qué el Proxy es necesario: hallazgos en infraestructura legacy</h2>
+        <p>
+          La revisión de código en producción sobre <code>tld-api-cuenta-nombre</code> (módulo <code>validador.js</code>) y la librería <code>tld-util</code> (publicada como <code>@telered/tld-telered-lib/tld-util-http</code>) muestra un enfoque que funcionó para integrar validadores internos, pero que deja grietas de seguridad y operación difíciles de auditar.
+          Lo siguiente no critica al equipo que lo construyó en su contexto histórico; fija el <strong>baseline</strong> que el Proxy debe superar.
+        </p>
+
+        <h3 class="h5 mt-4">1.1. Fallo de orden en la CRL (reactivo vs proactivo)</h3>
+        <p>
+          En <code>tld-util</code>, el flujo de <code>sendRequest</code> construye la petición HTTPS con las CA del EFS, escribe el cuerpo con <code>req.write</code> y cierra con <code>req.end()</code>.
+          La comprobación de revocación contra la CRL ocurre cuando ya ha llegado la <strong>respuesta</strong> HTTP: en el callback de <code>https.request</code> se lee el certificado del peer y se compara el serial con la lista cargada desde disco.
+        </p>
+        <p>
+          Consecuencia: el <strong>primer byte del cuerpo de la petición ya ha salido por el cable</strong> antes de que la lógica de CRL pueda abortar con conocimiento pleno del estado de revocación en ese diseño.
+          Eso es incompatible con una política estricta de “no enviar datos de negocio si el certificado del validador está revocado”.
+        </p>
+        <div class="alert alert-warning small" role="alert">
+          <strong>Lo que hace el Proxy:</strong> tras <code>secureConnect</code>, obtiene el certificado del peer, consulta la CRL (con caché en memoria y TTL) y <strong>solo entonces</strong> llama a <code>req.write</code> / <code>req.end</code>.
+          La revocación bloquea el envío: <em>verificar antes de hablar</em>. El detalle de implementación está en <a href="crypto-transport.html#handshake-pasos">Handshake TLS (narrativa)</a> y <a href="crypto-transport.html#codigo-fuente">código comentado de <code>httpsClient.js</code></a>.
+        </div>
+
+        <h3 class="h5 mt-4">1.2. Inconsistencia de motores (Axios frente a HTTPS nativo)</h3>
+        <p>
+          Hoy la decisión “¿PKI Telered o no?” depende de una variable de entorno global, <code>URL_CA_TELERED</code>: una lista de prefijos de URL separados por espacios.
+          Si la URL del validador (o la de login) <strong>coincide</strong> con algún prefijo, se invoca la librería Telered; si no, se usa <code>axios.post</code> sin inyectar las CA del EFS en un <code>https.Agent</code>.
+        </p>
+        <p>
+          Eso produce dos mundos en el mismo servicio: en un camino tienes CA corporativas y CRL (aunque en el orden legacy descrito arriba); en el otro, confías en el almacén de CA <strong>públicas</strong> por defecto de Node y <strong>no</strong> aplicas la CRL de Telered.
+          Cualquier canal cuyo prefijo no esté bien mantenido en despliegue cae silenciosamente al segundo modo.
+        </p>
+        <p>
+          <strong>Lo que hace el Proxy:</strong> un único motor basado en el módulo <code>https</code> de Node, política de confianza explícita (buffers de CA desde EFS), CRL unificada y telemetría coherente.
+          La granularidad por canal pasa a vivir en datos (DynamoDB), no en redeployar strings en plantillas SAM por cada nuevo host.
+        </p>
+
+        <h3 class="h5 mt-4">1.3. Ausencia de mTLS (identidad de salida del cliente)</h3>
+        <p>
+          Ni <code>validador.js</code> ni <code>tld-util</code> cargan <code>cert</code> ni <code>key</code> de cliente para el socket TLS.
+          El validador remoto solo ve una conexión saliente anónima desde el punto de vista de certificado de cliente: la identidad fuerte es solo la del servidor remoto hacia nosotros, no al revés.
+        </p>
+        <p>
+          <strong>Lo que hace el Proxy:</strong> capacidad de mTLS opcional por canal: cuando el perfil lo indique, el <code>https.Agent</code> incluirá los Buffers de certificado y clave privada de cliente leídos del EFS (o referencias gestionadas de forma segura), permitiendo que el validador exija “doble pasaporte” en integraciones de alta seguridad.
+        </p>
+
+        <h3 class="h5 mt-4">1.4. Eficiencia del EFS y lectura repetida de CRL</h3>
+        <p>
+          En <code>tld-util</code>, la función que extrae los seriales revocados de la CRL lee el archivo desde disco con <code>readFileSync</code> en cada petición que pasa por <code>sendRequest</code> (sin capa de caché con TTL en ese código).
+          Bajo carga, eso multiplica I/O sobre EFS, latencia y presión en el file system compartido, sin beneficio proporcional: el contenido de la CRL cambia con una cadencia mucho menor que la de las invocaciones HTTP.
+        </p>
+        <p>
+          <strong>Lo que hace el Proxy:</strong> caché en memoria del conjunto de seriales revocados (o del parseo DER) con <strong>TTL configurable</strong>, alineado a la ventana de riesgo aceptada por PKI.
+          Se reduce lectura y parseo en caliente; cada instancia Lambda mantiene su propia caché (no hay estado compartido entre contenedores), lo cual es coherente con el modelo de ejecución serverless.
+        </p>
+      </section>
+
+      <section id="arquitectura-proxy" class="mt-5">
+        <h2 class="h3 border-0 pb-0">2. Nueva arquitectura de conectividad</h2>
+
+        <h3 class="h5 mt-4" id="deteccion-dinamica">2.1. Detección dinámica de infraestructura</h3>
+        <p>
+          La variable global <code>URL_CA_TELERED</code> obliga a desplegar de nuevo la Lambda cada vez que se añade un prefijo de URL o se corrige un error de configuración.
+          Escala mal cuando muchos canales comparten la misma PKI pero distintos hostnames o paths.
+        </p>
+        <p>
+          El Proxy consulta el registro del canal en <strong>DynamoDB</strong> (tabla <code>tld-validador-canal</code> u homóloga del modelo operativo), lee un campo de perfil de transporte — por ejemplo <code>tlsProfile</code> con valor <strong><code>TELERED_PKI</code></strong> — y, en su caso, listas de prefijos o rutas EFS específicas de ese canal.
+          Así, un canal nuevo puede marcarse como “Telered” o “CA pública” <strong>sin cambiar código ni parámetro global de plantilla</strong>, solo actualizando el item en la tabla (con los controles de cambio que defina el equipo).
+        </p>
+        <div class="wiki-callout-beginner">
+          <div class="wiki-callout-title">Resumen</div>
+          <p class="small mb-0">
+            <strong>Legacy:</strong> “¿Empieza la URL por algo que listé en una env var?” → bifurca axios vs librería.
+            <strong>Proxy:</strong> “¿Qué perfil TLS declaró este canal en DynamoDB?” → un solo cliente HTTPS aplica CA, CRL, mTLS y SNI según ese perfil.
+          </p>
+        </div>
+
+        <h3 class="h5 mt-4" id="implementacion-mtls">2.2. Implementación de mTLS (la identidad del Proxy)</h3>
+        <p>
+          <strong>mTLS</strong> (<em>mutual TLS</em>) es el <strong>doble pasaporte</strong>: además de que nosotros validemos el certificado del validador remoto con nuestras CA, el validador valida <em>nuestro</em> certificado de cliente.
+          Sin ambos lados conformes, el handshake no completa la política acordada.
+        </p>
+        <p>
+          En <code>httpsClient.js</code>, el <code>https.Agent</code> se construye con los parámetros que Node expone para cliente TLS: además de <code>ca</code> (confianza hacia el servidor), se pueden pasar <code>cert</code> y <code>key</code> como <strong>Buffers</strong> leídos desde rutas del EFS.
+          La carga debe ser <strong>bajo demanda y por perfil</strong>: solo los canales con <code>mtlsActive</code> verdadero leen esos archivos, para no exponer claves en memoria ni en disco de contenedores que no las necesitan.
+        </p>
+
+        <h3 class="h5 mt-4" id="crl-proactiva">2.3. Optimización de la CRL (seguridad proactiva)</h3>
+        <p>
+          El flujo operativo del Proxy sigue la regla <strong>“verificar antes de hablar”</strong>: una vez establecido el canal TLS y conocido el certificado del peer, se resuelve el serial (con normalización acordada con PKI), se consulta la CRL desde caché o desde EFS si expiró el TTL, y si el certificado está revocado se destruye la petición <strong>sin</strong> enviar el cuerpo HTTP de negocio.
+        </p>
+        <p>
+          Esto alinea la política de seguridad con lo que espera un auditor: no basta con haber “tocado” la CRL en algún punto de la vida de la petición; debe impedir el envío de datos sensibles cuando la identidad del peer ya no es aceptable.
+        </p>
+      </section>
+
+      <section id="diagrama-transporte-avanzado" class="mt-5">
+        <h2 class="h3 border-0 pb-0">3. Diagrama de secuencia — transporte avanzado</h2>
+        <p class="small">
+          El participante <strong>Validador TLS</strong> representa el endpoint HTTPS del validador (análogo a un “banco” u otro socio B2B). <strong>CRL</strong> agrupa la política de revocación (fichero en EFS + caché en el proceso del Proxy).
+        </p>
+        <div class="wiki-mermaid-wrap shadow-sm mb-4">
+          <pre class="mermaid">sequenceDiagram
+    autonumber
+    participant Proxy as Proxy Lambda
+    participant DynamoDB as DynamoDB canal
+    participant EFS as EFS PKI
+    participant CRL as CRL cache
+    participant Validador as Validador TLS
+
+    Proxy->>+DynamoDB: Lee canal tlsProfile mtlsActive rutas EFS
+    DynamoDB-->>-Proxy: Perfil TELERED_PKI y banderas mTLS
+
+    Proxy->>+EFS: Carga CA raiz e intermedia PEM
+    EFS-->>-Proxy: Buffers CA para Agent
+    alt Canal con mTLS activo
+      Proxy->>+EFS: Lee PEM cert y key de cliente
+      EFS-->>-Proxy: Buffers cert key
+    end
+
+    Proxy->>+Validador: Handshake TLS intercambio de certificados
+    Validador-->>Proxy: Cadena del servidor en handshake
+
+    Proxy->>+CRL: Tras secureConnect serial peer vs revocados cache o EFS
+    CRL-->>-Proxy: OK o serial en lista negra
+
+    alt Revocado o CRL invalida
+      Proxy->>Proxy: BLOQUEA no envia body HTTP
+    else Politica OK
+      Proxy->>Validador: POST cuerpo de aplicacion cifrado
+      Validador-->>-Proxy: Respuesta HTTP
+    end</pre>
+        </div>
+        <p class="small text-muted mb-0">
+          Para el detalle de módulos y variables de entorno del Proxy ya desplegado en documentación hermana, ver <a href="crypto-transport.html#variables-efs">Variables y EFS</a>.
+        </p>
+      </section>
+
+      <section id="modelo-datos-canal" class="mt-5">
+        <h2 class="h3 border-0 pb-0">4. Modelo de datos propuesto en la wiki (<code>tld-validador-canal</code>)</h2>
+        <p class="small">
+          Los nombres siguientes son el contrato lógico para documentar el diseño; el equipo de datos puede mapearlos a atributos DynamoDB, GSI o documentos embebidos según el esquema real.
+          Campos adicionales (p. ej. <code>tlsCaPath</code>, <code>tlsCrlPath</code>, TTL de CRL) pueden ampliar la tabla sin contradecir esta base.
+        </p>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Campo</th>
+                <th scope="col">Tipo / valores típicos</th>
+                <th scope="col">Propósito (transporte)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>tlsProfile</code></td>
+                <td>String, p. ej. <code>TELERED_PKI</code>, <code>PUBLIC_CA</code>, <code>CUSTOM_EFS</code></td>
+                <td>Selecciona el modo de confianza TLS del canal: PKI interna Telered, CA públicas estándar, o rutas EFS personalizadas.</td>
+              </tr>
+              <tr>
+                <td><code>mtlsActive</code></td>
+                <td>Boolean o <code>Y</code>/<code>N</code></td>
+                <td>Si está activo, el Agent del cliente carga <code>cert</code> y <code>key</code> desde EFS para presentar identidad de salida al validador.</td>
+              </tr>
+              <tr>
+                <td><code>tlsClientCertPath</code></td>
+                <td>String (ruta absoluta bajo mount EFS)</td>
+                <td>Ruta al PEM del certificado de cliente usado en mTLS.</td>
+              </tr>
+              <tr>
+                <td><code>tlsClientKeyPath</code></td>
+                <td>String (ruta absoluta bajo mount EFS)</td>
+                <td>Ruta al PEM (o clave protegida según estándar acordado) de la clave privada del cliente.</td>
+              </tr>
+              <tr>
+                <td><code>tlsServerName</code></td>
+                <td>String (hostname) u opcional vacío</td>
+                <td>Override de <strong>SNI</strong> cuando el nombre TLS esperado por el servidor no coincide con el host de la URL; si vacío, se usa el hostname de la URL.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="alert alert-info small mb-0" role="alert">
+          <strong>Seguridad:</strong> la tabla no debe almacenar material de clave en claro si la política corporativa exige otro almacén; en ese caso los campos pueden ser referencias a Secrets Manager o a nombres de archivo fijos acordados, manteniendo el mismo significado lógico en la wiki.
+        </div>
+      </section>
+
+      <p class="small text-muted mt-5 mb-1">
+        <strong>Documento:</strong> Conectividad Telered y mTLS (justificación de proyecto). <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+      </p>
+      <p class="text-muted small mb-0">
+        Túnel TLS detallado: <a href="crypto-transport.html">Transporte mTLS/CRL</a>. Contrato de datos: <a href="data-dictionary.html">Diccionario de Datos</a>. Cifrado de aplicación (fuera de alcance aquí): <a href="crypto-app.html">Cifrado App</a>.
+      </p>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
