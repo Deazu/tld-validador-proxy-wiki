@@ -81,10 +81,13 @@
         <div class="fw-semibold mb-2">En esta página</div>
         <ul class="mb-0">
           <li><a href="#tabla-canal">1. <code>tld-validador-canal</code></a></li>
-          <li><a href="#tabla-operacion">2. <code>tld-validador-canal-operacion</code></a></li>
-          <li><a href="#tabla-telemetry">3. <code>tld-validador-proxy-telemetry</code></a></li>
-          <li><a href="#efs-jerarquia">4. Jerarquía EFS <code>/mnt/tld-llaves/</code></a></li>
-          <li><a href="#er-diagrama">5. Diagrama entidad-relación</a></li>
+          <li><a href="#tabla-llave">2. <code>tld-validador-canal-llave</code></a></li>
+          <li><a href="#tabla-operacion">3. <code>tld-validador-canal-operacion</code></a></li>
+          <li><a href="#tabla-telemetry">4. <code>tld-validador-proxy-telemetry</code></a></li>
+          <li><a href="#restricciones-formato">5. Restricciones de formato y longitud</a></li>
+          <li><a href="#matriz-errores">6. Matriz maestra <code>PROXY_ERR_*</code> y telemetría</a></li>
+          <li><a href="#efs-jerarquia">7. Jerarquía EFS <code>/mnt/tld-llaves/</code></a></li>
+          <li><a href="#er-diagrama">8. Diagrama entidad-relación</a></li>
         </ul>
       </nav>
 
@@ -112,7 +115,7 @@
               <tr>
                 <td><code>alias</code></td>
                 <td>String</td>
-                <td>Nombre amigable o código corto que el cliente puede enviar en lugar del id; el proxy puede resolver con Scan/GSI según diseño. Ejemplo: <code>validador-nomina</code>.</td>
+                <td>Nombre amigable o código corto que el cliente puede enviar en lugar del id; en producción debe resolverse con <strong>Query</strong> al GSI <code>alias-index</code> (ver más abajo), nunca con <code>Scan</code> en caliente. Ejemplo: <code>validador-nomina</code>.</td>
               </tr>
               <tr>
                 <td><code>llaveCifrado</code></td>
@@ -162,13 +165,94 @@
             </tbody>
           </table>
         </div>
+        <h3 class="h5 mt-4">Claves DynamoDB e índices — <code>tld-validador-canal</code></h3>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Concepto</th>
+                <th scope="col">Definición recomendada</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Partition Key (PK)</strong></td>
+                <td><code>idCanal</code> (String). Una fila por canal; todas las lecturas “por id” son <code>GetItem</code> o <code>Query</code> de coste O(1) en la partición.</td>
+              </tr>
+              <tr>
+                <td><strong>Sort Key (SK)</strong></td>
+                <td>Si la tabla es <em>solo</em> canales, puede omitirse (PK única). Si en el futuro se versionan filas del mismo canal, usar SK fija <code>PROFILE#CURRENT</code> o similar.</td>
+              </tr>
+              <tr>
+                <td><strong>GSI1 — <code>alias-index</code></strong></td>
+                <td><strong>PK</strong> = <code>alias</code> (String normalizado a minúsculas en aplicación), <strong>SK</strong> = <code>idCanal</code>. Proyección: claves + atributos necesarios para el handler. Evita <code>Scan</code> con <code>FilterExpression</code> del legado (<code>canal.js</code>) en caliente.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <p class="small text-muted mb-0">
           Pueden existir más atributos (auth dinámico, headers, JSON de login, etc.) heredados del legado; este diccionario lista los mínimos para <strong>identidad + aplicación + transporte</strong> del proxy autónomo.
         </p>
       </section>
 
+      <section id="tabla-llave" class="mt-5">
+        <h2 class="h3 border-0 pb-0">2. Tabla <code>tld-validador-canal-llave</code></h2>
+        <p class="small">
+          <strong>Rol:</strong> almacena el material o la referencia de archivo para claves simétricas cuando <code>llaveCifrado</code> / <code>llaveDescifrado</code> en el canal <strong>no</strong> son ARN de KMS.
+          El <code>IdentityManager</code> hace <code>GetItem</code> por id de llave y compone el argumento <code>origen</code> que consume <code>OperacionesPaquete</code> (ruta bajo EFS, etc.).
+        </p>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Atributo</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Descripción y ejemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>idLlave</code></td>
+                <td>String</td>
+                <td><strong>Partition Key (PK).</strong> Coincide con el valor almacenado en <code>tld-validador-canal.llaveCifrado</code> (o descifrado) cuando no es ARN. Ejemplo: <code>LLAVE_CANAL_1000_01</code>.</td>
+              </tr>
+              <tr>
+                <td><code>archivo</code> / material</td>
+                <td>String u otros</td>
+                <td>Ruta relativa al mount EFS o metadatos que el motor de cifrado espera (según implementación de <code>operacionesPaquete</code> en el repo de aplicación).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="h5 mt-4">Claves DynamoDB e índices — <code>tld-validador-canal-llave</code></h3>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Concepto</th>
+                <th scope="col">Definición recomendada</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Partition Key (PK)</strong></td>
+                <td><code>idLlave</code> (String). Tabla de <strong>acceso por clave simple</strong>: una lectura <code>GetItem</code> por referencia.</td>
+              </tr>
+              <tr>
+                <td><strong>Sort Key (SK)</strong></td>
+                <td><strong>No requerida</strong> si cada llave es un único ítem. Si en el futuro se versionan llaves, usar SK p. ej. <code>VERSION#2026-03-01</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>GSI</strong></td>
+                <td>Opcional (p. ej. auditoría por tipo de llave); el camino caliente del proxy solo necesita PK <code>idLlave</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section id="tabla-operacion" class="mt-5">
-        <h2 class="h3 border-0 pb-0">2. Tabla <code>tld-validador-canal-operacion</code></h2>
+        <h2 class="h3 border-0 pb-0">3. Tabla <code>tld-validador-canal-operacion</code></h2>
         <p class="small">
           <strong>Rol:</strong> autorización fina: qué códigos de método de negocio (<code>metodo</code> en el evento) están permitidos para un <code>idCanal</code> y, opcionalmente, URL específica por operación.
           El proxy debe rechazar métodos no declarados antes de abrir TLS o cifrar payload.
@@ -206,13 +290,38 @@
             </tbody>
           </table>
         </div>
+        <h3 class="h5 mt-4">Claves DynamoDB e índices — <code>tld-validador-canal-operacion</code></h3>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Concepto</th>
+                <th scope="col">Definición recomendada</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Partition Key (PK)</strong></td>
+                <td><code>idCanal</code> (String). Agrupa todas las operaciones permitidas para un canal.</td>
+              </tr>
+              <tr>
+                <td><strong>Sort Key (SK)</strong></td>
+                <td><code>operacion</code> (String), p. ej. <code>0001</code>. Acceso: <code>Query</code> con <code>idCanal = :id</code> para cargar el menú de métodos en una sola ronda.</td>
+              </tr>
+              <tr>
+                <td><strong>GSI</strong></td>
+                <td>Opcional si existe reporting por <code>operacion</code> global; no es requisito del handler del proxy en el camino feliz.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <p class="small text-muted mb-0">
           <strong>Clave compuesta típica:</strong> <code>PK = idCanal</code>, <code>SK = operacion</code> (o un solo ítem por fila con ambos atributos según el patrón de acceso elegido en SAM).
         </p>
       </section>
 
       <section id="tabla-telemetry" class="mt-5">
-        <h2 class="h3 border-0 pb-0">3. Tabla <code>tld-validador-proxy-telemetry</code></h2>
+        <h2 class="h3 border-0 pb-0">4. Tabla <code>tld-validador-proxy-telemetry</code></h2>
         <p class="small">
           <strong>Rol:</strong> observabilidad técnica y forense por petición. Nombre por defecto en código: variable <code>PROXY_TELEMETRY_TABLE</code> o <code>tld-validador-proxy-telemetry</code> (ver <a href="crypto-transport.html#codigo-fuente"><code>telemetry.js</code></a>).
           Cada <code>emit</code> escribe una línea de tiempo; no sustituye logs estructurados ni métricas CloudWatch, pero permite reconstruir orden de fases post-incidente.
@@ -255,18 +364,189 @@
               <tr>
                 <td><code>detail</code></td>
                 <td>Map / Object</td>
-                <td>Metadatos técnicos <strong>sin PII</strong>: códigos de error, fase interna, contadores. Ejemplo: <code>{ "code": "CERT_REVOKED", "phase": "crl" }</code>. No incluir cuerpos HTTP, DN completos ni tokens.</td>
+                <td>Metadatos técnicos <strong>sin PII</strong>: códigos de error, fase interna, contadores. Debe incluir <code>internalCode</code> alineado a la matriz (p. ej. <code>PROXY_ERR_TLS_001</code>). Ejemplo: <code>{ "internalCode": "PROXY_ERR_CRL_002", "reason": "CERT_REVOKED", "phase": "CRL_Check" }</code>. No incluir cuerpos HTTP, DN completos ni tokens.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="h5 mt-4">Claves DynamoDB e índices — <code>tld-validador-proxy-telemetry</code></h3>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Concepto</th>
+                <th scope="col">Definición</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Estado mínimo (prototipo)</strong></td>
+                <td>El ejemplo en <a href="crypto-transport.html#codigo-fuente"><code>telemetry.js</code></a> persiste un ítem plano por <code>emit</code>; sin SK explícito dos eventos con el mismo <code>correlationId</code> y <code>timestamp</code> podrían colisionar si la tabla usa PK simple.</td>
+              </tr>
+              <tr>
+                <td><strong>Partition Key (PK) — producción</strong></td>
+                <td><code>correlationId</code> (String) <strong>o</strong> prefijo estable <code>CID#&lt;correlationId&gt;</code> si se namespacen tablas compartidas.</td>
+              </tr>
+              <tr>
+                <td><strong>Sort Key (SK) — producción</strong></td>
+                <td><strong>Obligatorio recomendado:</strong> compuesto único por evento, p. ej. <code>${timestamp}#${phase}#${ulid}</code> o ULID solo, para que múltiples fases de la misma petición no sobrescriban la fila.</td>
+              </tr>
+              <tr>
+                <td><strong>GSI — forense por tiempo</strong></td>
+                <td><strong>PK</strong> = fecha truncada (<code>YYYY-MM-DD</code>) o ventana horaria, <strong>SK</strong> = <code>timestamp</code>; proyección de <code>phase</code>, <code>outcome</code>, <code>detail.internalCode</code>. Alternativa: usar Athena sobre export S3 si el volumen crece.</td>
+              </tr>
+              <tr>
+                <td><strong>GSI — por canal (opcional)</strong></td>
+                <td>Si <code>detail.idCanal</code> se estandariza, GSI con PK = <code>idCanal</code>, SK = <code>timestamp</code> para incidentes por integración.</td>
               </tr>
             </tbody>
           </table>
         </div>
         <p class="small text-muted mb-0">
-          <strong>Recomendación:</strong> GSI con <code>correlationId</code> (partition) y <code>timestamp</code> (sort) para consultas por petición. Opcionalmente añadir <code>idCanal</code> dentro de <code>detail</code> para filtrar incidentes por canal sin exponer datos personales.
+          <strong>Recomendación:</strong> GSI con <code>correlationId</code> (partition) y <code>timestamp</code> (sort) para consultas por petición cuando el PK/SK base lo permitan. Opcionalmente añadir <code>idCanal</code> dentro de <code>detail</code> para filtrar sin PII.
+        </p>
+      </section>
+
+      <section id="restricciones-formato" class="mt-5">
+        <h2 class="h3 border-0 pb-0">5. Restricciones de formato y longitud (validación en borde)</h2>
+        <p class="small">
+          La Lambda debe rechazar datos mal formados <strong>antes</strong> de DynamoDB o TLS. Los límites siguientes son contrato de ingeniería; ajústalos en esquema JSON del API si usas validación en API Gateway.
+        </p>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Campo / familia</th>
+                <th scope="col">Longitud / tamaño</th>
+                <th scope="col">Formato (regex u regla)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>idCanal</code>, <code>alias</code></td>
+                <td>1–128 caracteres</td>
+                <td><code>^[A-Za-z0-9_\-]{1,128}$</code> (sin espacios; normalizar <code>alias</code> a minúsculas antes de GSI).</td>
+              </tr>
+              <tr>
+                <td><code>urlValidador</code>, <code>urlOperacion</code></td>
+                <td>máx. 2048 caracteres (URL práctica)</td>
+                <td>Esquema <strong>https</strong> obligatorio en producción: <code>^https://[A-Za-z0-9\-.]+(:\d{1,5})?(/[A-Za-z0-9\-._~%!$&amp;'()*+,;=:@/]*)?$</code> (ajustar según política de query strings). Rechazar <code>javascript:</code>, espacios sin codificar y control chars.</td>
+              </tr>
+              <tr>
+                <td><code>tlsServerName</code> (SNI)</td>
+                <td>1–253 caracteres (límite práctico DNS)</td>
+                <td>Hostname RFC 1123 simplificado: <code>^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$</code> o vacío para “usar host de la URL”.</td>
+              </tr>
+              <tr>
+                <td>Rutas EFS (<code>tlsClient*</code>, env <code>LIB_RUTA_*</code>)</td>
+                <td>máx. 1024 caracteres</td>
+                <td>Prefijo obligatorio <code>/mnt/tld-llaves/</code> (o mount acordado); sin <code>..</code> ni symlinks salientes: <code>^/mnt/tld-llaves/[^.\x00]+</code> (refinar con allowlist de subcarpetas <code>ca|crl|certs|keys|tld-ca|tld-crl</code>).</td>
+              </tr>
+              <tr>
+                <td><code>correlationId</code></td>
+                <td>8–128 caracteres</td>
+                <td>UUID v4 o CUID; regex laxo: <code>^[A-Za-z0-9\-]{8,128}$</code>.</td>
+              </tr>
+              <tr>
+                <td><code>algoritmoCifrado</code>, <code>tlsProfile</code></td>
+                <td>1–64 caracteres</td>
+                <td>Allowlist en código: solo valores conocidos (<code>AES_256_GCM</code>, <code>TELERED_PKI</code>, etc.); rechazar el resto.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small text-muted mb-0">
+          Los regex anteriores son base; el equipo de seguridad puede endurecer query paths o exigir punycode para IDN.
+        </p>
+      </section>
+
+      <section id="matriz-errores" class="mt-5">
+        <h2 class="h3 border-0 pb-0">6. Matriz maestra: códigos internos <code>PROXY_ERR_*</code></h2>
+        <p class="small">
+          Cada fila de telemetría con <code>outcome: FAIL</code> debe incluir en <code>detail.internalCode</code> (o campo homólogo) uno de estos códigos para correlación con runbooks y alarmas. El cliente HTTP solo ve un status genérico; el detalle técnico vive en DynamoDB y logs redactados.
+          En código, el handler debe propagar objetos de error que expongan un payload estable (p. ej. <code>err.telemetryDetail</code> desde <a href="identity.html#identity-manager-clase"><code>CanalNotFoundError</code></a> — canal con <code>PROXY_ERR_ID_001</code>, llave Dynamo ausente con <code>PROXY_ERR_ENC_001</code>) para que <code>telemetry.emit</code> no duplique lógica de mapeo.
+        </p>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col"><code>internalCode</code></th>
+                <th scope="col">HTTP al cliente</th>
+                <th scope="col">Fase típica (<code>phase</code>)</th>
+                <th scope="col">Descripción para telemetría / runbook</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>PROXY_ERR_VAL_001</code></td>
+                <td>400</td>
+                <td><code>Validation</code></td>
+                <td>JSON del evento inválido: falta <code>idCanalValidador</code>, <code>metodo</code> o <code>dataPlana</code>; tipos incorrectos.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_ERR_ID_001</code></td>
+                <td>404</td>
+                <td><code>Identity</code></td>
+                <td>Canal no encontrado por id ni por alias (GSI); misma semántica que <code>CanalNotFoundError</code>.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_ERR_AUTH_001</code></td>
+                <td>403</td>
+                <td><code>Authorization</code></td>
+                <td><code>metodo</code> no listado en operaciones o <code>estado != Y</code> para esa operación.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_ERR_ENC_001</code></td>
+                <td>500</td>
+                <td><code>Crypto_App</code></td>
+                <td>Fallo al cerrar paquete (KMS, llave EFS, modo AES incompatible) o <strong>ítem ausente</strong> en <code>tld-validador-canal-llave</code> para el <code>idLlave</code> referenciado por el canal (<code>GetItem</code> vacío).</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_ERR_TLS_001</code></td>
+                <td>502</td>
+                <td><code>Handshake_Start</code> / <code>Error</code></td>
+                <td>Handshake TLS fallido: cadena no confiable, SNI incorrecto, certificado servidor ausente.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_ERR_CRL_001</code></td>
+                <td>502</td>
+                <td><code>CRL_Check</code></td>
+                <td>CRL ilegible, parseo ASN.1 fallido o archivo ausente en EFS.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_ERR_CRL_002</code></td>
+                <td>502</td>
+                <td><code>CRL_Check</code></td>
+                <td>Serial del peer presente en lista de revocación; conexión abortada antes del body HTTP.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_ERR_NET_001</code></td>
+                <td>504</td>
+                <td><code>Error</code></td>
+                <td><code>RemoteEndpointTimeout</code>: TLS connect o lectura HTTP excedió umbral.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_ERR_MTLS_001</code></td>
+                <td>502</td>
+                <td><code>Handshake_Start</code></td>
+                <td>Certificado o clave de cliente ilegible; passphrase ausente tras Secrets Manager; rechazo del servidor por identidad cliente.</td>
+              </tr>
+              <tr>
+                <td><code>PROXY_ERR_INT_001</code></td>
+                <td>500</td>
+                <td><code>Error</code></td>
+                <td>Error no clasificado; revisar stack en logs internos (sin volcar al cliente).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small text-muted mb-0">
+          Mapeo exacto HTTP puede variar si API Gateway transforma cuerpos; mantener tabla en SAM/README alineada a esta matriz.
         </p>
       </section>
 
       <section id="efs-jerarquia" class="mt-5">
-        <h2 class="h3 border-0 pb-0">4. Estructura de llaves en EFS (<code>/mnt/tld-llaves/</code>)</h2>
+        <h2 class="h3 border-0 pb-0">7. Estructura de llaves en EFS (<code>/mnt/tld-llaves/</code>)</h2>
         <p class="small">
           El punto de montaje efectivo en Lambda debe coincidir con los parámetros SAM (<code>LIB_RUTA_ARCHIVO_CA</code>, etc.). La jerarquía lógica siguiente normaliza nombres de carpetas para CA, CRL, certificados de cliente y claves privadas.
           En despliegues existentes pueden aparecer subcarpetas como <code>tld-ca/</code> o <code>tld-crl/</code>; lo importante es que las <strong>rutas en DynamoDB y en variables de entorno apunten a archivos reales</strong>.
@@ -307,13 +587,14 @@
       </section>
 
       <section id="er-diagrama" class="mt-5">
-        <h2 class="h3 border-0 pb-0">5. Diagrama entidad-relación (lógico)</h2>
+        <h2 class="h3 border-0 pb-0">8. Diagrama entidad-relación (lógico)</h2>
         <p class="small">
           DynamoDB no impone FK; el diagrama expresa el <strong>contrato conceptual</strong> entre tablas y el uso de <code>idCanal</code> como eje de unión. La telemetría se vincula al negocio por <code>correlationId</code> y, opcionalmente, por metadatos en <code>detail</code>.
         </p>
         <div class="wiki-mermaid-wrap shadow-sm mb-3">
           <pre class="mermaid">erDiagram
     VALIDADOR_CANAL ||--o{ CANAL_OPERACION : autoriza
+    VALIDADOR_CANAL }o--|| CANAL_LLAVE : idLlave_o_ARN
     VALIDADOR_CANAL ||--o{ PROXY_TELEMETRY : traza
     VALIDADOR_CANAL {
       string idCanal
@@ -323,6 +604,10 @@
       boolean mtlsActive
       string llaveCifrado
       string algoritmoCifrado
+    }
+    CANAL_LLAVE {
+      string idLlave
+      string archivo
     }
     CANAL_OPERACION {
       string idCanal
@@ -340,15 +625,17 @@
       </section>
 
       <div class="alert alert-secondary small mb-0" role="alert">
-        <strong>Tablas satélite (legado / token):</strong> <code>tld-validador-canal-llave</code> (material criptográfico referenciado por id),
-        <code>tld-validador-canal-auth-token</code> (caché de sesión OAuth) y similares siguen fuera de este contrato central pero coexisten en el mismo ecosistema; no son necesarias para describir solo el transporte TLS del proxy.
+        <strong>Otras tablas satélite (legado / token):</strong> p. ej. <code>tld-validador-canal-auth-token</code> (caché de sesión OAuth) pueden coexistir en el mismo ecosistema sin formar parte del mínimo del proxy autónomo.
+        La tabla <code>tld-validador-canal-llave</code> está <strong>dentro del contrato</strong> (<a href="#tabla-llave">sección 2</a>) cuando el canal referencia llaves simétricas por id en lugar de ARN KMS.
       </div>
 
       <p class="small text-muted mt-4 mb-1">
         <strong>Diccionario de datos</strong> — contrato v1. <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
       </p>
       <p class="text-muted small mb-0">
-        Transporte: <a href="crypto-transport.html">Túnel TLS</a> · Justificación Telered: <a href="connectivity-telered.html">Conectividad Telered</a>.
+        Transporte: <a href="crypto-transport.html">Túnel TLS</a> · Orquestación: <a href="flow.html#orquestador-app">Flujo / <code>app.js</code></a> ·
+        Justificación Telered: <a href="connectivity-telered.html">Conectividad Telered</a> ·
+        Passphrase mTLS: <a href="connectivity-telered.html#mtls-secrets-manager">Secrets Manager</a>.
       </p>
     </main>
   </div>

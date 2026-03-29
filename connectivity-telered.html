@@ -87,6 +87,7 @@
         <ul class="mb-0">
           <li><a href="#hallazgos-legacy">1. Por qué el Proxy es necesario (hallazgos legacy)</a></li>
           <li><a href="#arquitectura-proxy">2. Nueva arquitectura de conectividad</a></li>
+          <li><a href="#mtls-secrets-manager">2.4. mTLS y Secrets Manager (passphrase)</a></li>
           <li><a href="#diagrama-transporte-avanzado">3. Diagrama de secuencia (transporte avanzado)</a></li>
           <li><a href="#modelo-datos-canal">4. Modelo de datos en <code>tld-validador-canal</code></a></li>
         </ul>
@@ -184,6 +185,26 @@
         <p>
           Esto alinea la política de seguridad con lo que espera un auditor: no basta con haber “tocado” la CRL en algún punto de la vida de la petición; debe impedir el envío de datos sensibles cuando la identidad del peer ya no es aceptable.
         </p>
+
+        <h3 class="h5 mt-4" id="mtls-secrets-manager">2.4. mTLS y Secrets Manager — passphrase de la llave privada</h3>
+        <p>
+          <strong>En tiempo de ejecución</strong> de la función (cada invocación que active mTLS, incluidos cold start y reutilización de contenedor), la passphrase se obtiene solo vía API de AWS, no al empaquetar ni al publicar la plantilla SAM.
+          Cuando la clave privada del cliente está cifrada con <strong>passphrase</strong> (PEM encryptado), esa contraseña <strong>no</strong> debe almacenarse en variables de entorno de la Lambda ni en DynamoDB.
+          Las variables de entorno aparecen en consolas de despliegue, plantillas exportadas y a veces en dumps de proceso; constituyen una superficie de fuga inaceptable para material que desbloquea el <strong>segundo pasaporte</strong> del mTLS.
+        </p>
+        <p>
+          <strong>Flujo de recuperación recomendado (AWS Secrets Manager):</strong>
+        </p>
+        <ol class="small">
+          <li>En el item del canal (o en convención por entorno), guardar solo el <strong>ARN o nombre</strong> del secreto, p. ej. <code>tlsClientKeySecretArn</code>, apuntando a un secreto JSON con campos acordados (<code>passphrase</code>, rotación gestionada por IAM).</li>
+          <li>La Lambda, en el camino <code>mtlsActive === true</code>, invoca en caliente <code>GetSecretValue</code> (SDK v3 <code>@aws-sdk/client-secrets-manager</code>) con el rol de ejecución de la función; obtiene la passphrase <strong>en memoria</strong> solo durante la construcción del <code>https.Agent</code> de esa petición (sin materializarla en <code>Environment</code> del recurso).</li>
+          <li>Leer el PEM de la clave desde EFS con <code>fs.readFile</code>; usar la passphrase recuperada para descifrar el PEM en un Buffer compatible con <code>tls.createSecureContext</code> / opciones <code>key</code> de Node (según formato: PKCS#8, RSA tradicional, etc.).</li>
+          <li><strong>No</strong> persistir la passphrase en variables globales del módulo; tras crear el contexto TLS, permitir que la cadena salga de alcance y sea recolectada por GC (evitar logs, cachés y copias en <code>detail</code> de telemetría).</li>
+          <li>Política IAM mínima: <code>secretsmanager:GetSecretValue</code> solo en el ARN del secreto del canal; opcionalmente CMK dedicada KMS en el secreto.</li>
+        </ol>
+        <div class="alert alert-danger small mb-0" role="alert">
+          <strong>Prohibido:</strong> <code>TLS_CLIENT_KEY_PASSPHRASE</code> u homólogos en <code>Environment</code> del <code>template.yaml</code>. Cualquier excepción temporal en desarrollo local debe documentarse como riesgo y no promoverse a staging/prod.
+        </div>
       </section>
 
       <section id="diagrama-transporte-avanzado" class="mt-5">

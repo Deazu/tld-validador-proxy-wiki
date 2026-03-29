@@ -72,7 +72,9 @@
           <div class="fw-semibold mb-2">En esta página</div>
           <ul class="mb-0">
             <li><a href="#diagrama-secuencia">Diagrama de secuencia</a></li>
+            <li><a href="#orquestador-app">Lógica del orquestador (<code>app.js</code>)</a></li>
             <li><a href="#paso-a-paso">Explicación por fase</a></li>
+            <li><a href="#estrategia-validacion">Validación en AWS (consola, sin mocks)</a></li>
             <li><a href="#pies-de-plomo">Estrategia «pies de plomo»</a></li>
           </ul>
         </nav>
@@ -116,6 +118,113 @@
     Http-->>-Handler: status y body
     Handler-->>-Client: respuesta HTTP API</pre>
           </div>
+        </section>
+
+        <section id="orquestador-app" class="mt-5">
+          <h2 class="h4">Lógica del orquestador (<code>app.js</code>)</h2>
+          <p>
+            El <strong>handler</strong> de la Lambda es el director de orquesta: no implementa TLS ni AES él mismo; encadena módulos con contratos estables.
+            Las analogías del resto de la wiki siguen aplicando: el <strong>portero</strong> (TLS + CRL) solo deja pasar al interior después del carné;
+            las <strong>cubetas</strong> (<code>Buffer</code>) aparecen al leer CA/CRL y al ensamblar la respuesta HTTP; el <strong>pasaporte doble</strong> (mTLS) es opcional por canal.
+          </p>
+          <p class="small text-muted">
+            Contrato de errores y HTTP: <a href="data-dictionary.html#matriz-errores">Matriz maestra <code>PROXY_ERR_*</code></a>.
+            Resolución de canal inmutable: clase <a href="identity.html#identity-manager-clase"><code>IdentityManager</code></a>.
+          </p>
+          <h3 class="h5 mt-3">Pseudo-código detallado (orden estricto de ejecución)</h3>
+          <pre class="bg-light border rounded p-3 small mb-3"><code>FUNCTION handler(event, context):
+  correlationId ← event.headers['x-correlation-id'] OR generar UUID
+  telemetry.emit({ correlationId, phase: 'Handler_Start', outcome: 'OK' })
+
+  // 1) Sanitización temprana — nunca loguear secretos crudos
+  logger.Print('[proxy] evento recibido', sanitize(event))
+  SI validación de forma del evento falla:
+     telemetry.emit({ correlationId, phase: 'Validation', outcome: 'FAIL', detail: { internalCode: 'PROXY_ERR_VAL_001' } })
+     RETORNAR response HTTP 400 con cuerpo genérico
+
+  // 2) Identidad del canal (DynamoDB) — antes de cifrar o abrir TLS
+  TRY:
+     canalDto ← await IdentityManager.resolveChannel(event.idCanalValidador)
+  CATCH CanalNotFoundError:
+     telemetry.emit({ correlationId, phase: 'Identity', outcome: 'FAIL', detail: { internalCode: 'PROXY_ERR_ID_001' } })
+     RETORNAR 404
+  SI NOT IdentityManager.metodoDisponible(canalDto, event.metodo):
+     telemetry.emit({ correlationId, phase: 'Authorization', outcome: 'FAIL', detail: { internalCode: 'PROXY_ERR_AUTH_001' } })
+     RETORNAR 403
+
+  // 3) Cifrado de aplicación (sobre de negocio) — OperacionesPaquete
+  TRY:
+     payloadCifrado ← OperacionesPaquete.cerrarPaquete(origen, event.dataPlana, modoDesdeDynamo)
+  CATCH error cifrado:
+     telemetry.emit({ correlationId, phase: 'Crypto_App', outcome: 'FAIL', detail: { internalCode: 'PROXY_ERR_ENC_001' } })
+     RETORNAR 500
+
+  // 4) Transporte — httpsClient.requestSecure con perfil TLS del canalDto
+  urlDestino ← resolver URL desde canalDto + operación (urlOperacion o urlValidador)
+  TRY:
+     telemetry.emit({ correlationId, phase: 'Handshake_Start', outcome: 'OK' })
+     httpResult ← await httpsClient.requestSecure({
+       url: urlDestino,
+       method: 'POST',
+       headers: headersDesdeCanal,
+       body: payloadCifrado,
+       tlsOptions: derivarDesde(canalDto)   // CA, mTLS, SNI, CRL antes del body
+     })
+     telemetry.emit({ correlationId, phase: 'HTTP_Response', outcome: 'OK', durationMs: ... })
+  CATCH TlsHandshakeError:
+     RETORNAR mapear PROXY_ERR_TLS_001 → 502
+  CATCH CERT_REVOKED / CrlCheckError:
+     RETORNAR mapear PROXY_ERR_CRL_* → 502 o 403 según matriz
+  CATCH RemoteEndpointTimeout:
+     RETORNAR mapear PROXY_ERR_NET_001 → 504
+
+  // 5) Respuesta al cliente interno
+  RETORNAR 200 con cuerpo según contrato API Gateway</code></pre>
+          <h3 class="h5 mt-4">Contrato de datos entre piezas (qué se pasa de un módulo al siguiente)</h3>
+          <p class="small">
+            Cada etapa consume un producto claro de la anterior; así se evita que el <strong>portero</strong> (TLS) reciba algo que no sea ya el “sobre” correcto, y las <strong>cubetas</strong> (<code>Buffer</code>) solo se llenan donde el transporte las necesita (respuesta HTTP, lectura PEM en disco).
+          </p>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle small">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col">Paso</th>
+                  <th scope="col">Productor → Consumidor</th>
+                  <th scope="col">Datos que circulan (contrato)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Entrada</td>
+                  <td>API Gateway / cliente → <code>handler</code></td>
+                  <td>Evento JSON: <code>idCanalValidador</code> (id o alias), <code>metodo</code>, <code>dataPlana</code>; cabeceras opcionales (<code>x-correlation-id</code>). Sin modo AES ni rutas de llave en claro.</td>
+                </tr>
+                <tr>
+                  <td>Identidad</td>
+                  <td><code>IdentityManager</code> → orquestador</td>
+                  <td><code>canalDto</code> congelado (inmutable): atributos de <code>tld-validador-canal</code>, <code>llaveCifrado</code>/<code>llaveDescifrado</code> ya resueltos (objeto KMS o fila de llave + ruta EFS según diseño), <code>algoritmoCifrado</code>, <code>operaciones[]</code>, <code>urlValidador</code>, perfil TLS (<code>tlsProfile</code>, rutas mTLS, etc.).</td>
+                </tr>
+                <tr>
+                  <td>Cifrado app</td>
+                  <td>Orquestador → <code>OperacionesPaquete.cerrarPaquete</code></td>
+                  <td><strong>Entrada:</strong> <code>origen</code> (ruta o descriptor de llave coherente con el DTO), <code>event.dataPlana</code> (objeto), <code>modo</code> = cadena exacta desde Dynamo (<code>algoritmoCifrado</code> normalizado en código). <strong>Salida:</strong> <code>payloadCifrado</code> (string o <code>Buffer</code>) listo para el cable.</td>
+                </tr>
+                <tr>
+                  <td>URL efectiva</td>
+                  <td>Orquestador (regla de negocio)</td>
+                  <td><code>urlDestino</code> = <code>urlOperacion</code> de la fila que coincide con <code>metodo</code> si existe; si no, <code>urlValidador</code> del canal. Debe cumplir regex del <a href="data-dictionary.html#restricciones-formato">diccionario de datos</a>.</td>
+                </tr>
+                <tr>
+                  <td>Transporte</td>
+                  <td>Orquestador → <code>httpsClient.requestSecure</code></td>
+                  <td>Opciones: <code>url</code>, <code>method</code>, <code>headers</code> (sin secretos en logs), <code>body: payloadCifrado</code>, y <code>tlsContext</code> derivado del <code>canalDto</code> (CA/CRL EFS, SNI, cert/key mTLS + passphrase desde Secrets Manager si aplica). Salida: <code>statusCode</code>, cabeceras, <code>body</code> como <code>Buffer</code> ensamblado (cubetas).</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small mb-0">
+            Cualquier <code>await</code> que falle fuera de los tipos anteriores debe degradarse a <code>PROXY_ERR_INT_001</code> (500) con mensaje opaco al cliente y detalle técnico solo en telemetría.
+          </p>
         </section>
 
         <section id="paso-a-paso" class="mt-5">
@@ -164,6 +273,29 @@
           </p>
         </section>
 
+        <section id="estrategia-validacion" class="mt-5">
+          <h2 class="h4">Validación en AWS (consola, canales reales o dummy ya desplegados)</h2>
+          <p>
+            El contrato de esta wiki asume que el equipo <strong>prueba contra la cuenta AWS real</strong> (dev/qa): canales validadores ya existentes en DynamoDB, URLs que apunten a validadores reales o endpoints dummy corporativos en la misma VPC, y EFS montado como en producción.
+            No se documenta aquí una capa de mocks ni harness local complejo: el “portero” y el “pasaporte” se validan con el mismo TLS y PKI que verá el usuario final.
+          </p>
+          <h3 class="h5 mt-3">Checklist en consola (orden sugerido)</h3>
+          <ol class="small">
+            <li><strong>DynamoDB:</strong> verificar ítems en <code>tld-validador-canal</code>, <code>tld-validador-canal-operacion</code> y <code>tld-validador-canal-llave</code> para el id/alias que usarás; confirmar que el GSI <code>alias-index</code> devuelve el canal sin <code>Scan</code> (ver <a href="data-dictionary.html">diccionario de datos</a>).</li>
+            <li><strong>Lambda → Test:</strong> en la consola de Lambda, pestaña <em>Test</em>, crear un evento de ejemplo alineado con <a href="identity.html#ejemplo-evento">Identidad / ejemplo de evento</a>; ejecutar y revisar la respuesta HTTP mapeada (400/403/404/502/504 según <a href="data-dictionary.html#matriz-errores">matriz <code>PROXY_ERR_*</code></a>).</li>
+            <li><strong>CloudWatch Logs:</strong> confirmar que <code>logger.Print</code> solo muestra metadatos sanitizados (<code>PRINT_LOGS</code> según política) y que no aparecen PEM, passphrases ni cuerpos completos.</li>
+            <li><strong>Tabla de telemetría:</strong> en <code>tld-validador-proxy-telemetry</code>, filtrar por <code>correlationId</code> (o GSI forense) y comprobar la secuencia de <code>phase</code> hasta <code>HTTP_Response</code> o <code>FAIL</code> con <code>detail.internalCode</code>.</li>
+            <li><strong>API Gateway:</strong> si el borde es HTTP API o REST, usar la acción <em>Test</em> del método o un cliente interno autorizado hacia la URL de etapa; validar que el timeout del API no corta antes que el del validador remoto.</li>
+            <li><strong>EFS / PKI:</strong> desde un bastión o Lambda de diagnóstico en la misma VPC, comprobar que los archivos referenciados por <code>LIB_RUTA_*</code> y por rutas del canal existen y son legibles por el rol de ejecución.</li>
+          </ol>
+          <h3 class="h5 mt-3">Canales dummy y validadores reales</h3>
+          <p class="small mb-0">
+            Un “dummy” en este contexto es <strong>otro servicio HTTPS ya registrado</strong> en la tabla de canales (misma red, certificado coherente con la CA montada), no un proceso simulado en el portátil del desarrollador.
+            Para fallos de revocación o TLS, la fuente de verdad es el estado del certificado y la CRL publicada en EFS en ese entorno — igual que en producción.
+            Guía de diagnóstico por síntomas: <a href="crypto-transport.html#depuracion-troubleshooting">Troubleshooting transporte</a>.
+          </p>
+        </section>
+
         <section id="pies-de-plomo" class="mt-5">
           <h2 class="h4">Estrategia «pies de plomo»</h2>
           <p>
@@ -174,6 +306,7 @@
 
         <p class="text-muted small mt-5 mb-0">
           Modelo de canal y código refactor: <a href="identity.html">Identidad / Canal</a> ·
+          <a href="data-dictionary.html">Diccionario de Datos</a> ·
           Sanitización: <a href="logger.html">Logger</a>.
         </p>
       </div>

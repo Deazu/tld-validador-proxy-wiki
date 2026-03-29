@@ -1127,12 +1127,17 @@ module.exports = { requestSecure, getAgent };
         <h2 class="h3 border-0 pb-0">8. Depuración y troubleshooting</h2>
         <p class="small">
           Cuando falle el transporte, seguir el orden <strong>TLS → CRL → HTTP</strong>: primero confirmar que el handshake acepta la cadena, luego que el serial no está en CRL, por último status codes y timeouts de aplicación.
+          Los códigos internos homogéneos (<code>PROXY_ERR_TLS_001</code>, <code>PROXY_ERR_CRL_002</code>, etc.) y su mapeo HTTP están en la <a href="data-dictionary.html#matriz-errores">matriz maestra del diccionario de datos</a>.
+          Para ensayar contra <strong>validadores reales o dummy ya registrados en DynamoDB</strong> (consola AWS, sin mocks en laptop como contrato principal), seguir la <a href="flow.html#estrategia-validacion">validación en AWS (consola, sin mocks)</a> en Flujo General.
+        </p>
+        <p class="small text-muted mb-0">
+          Las analogías del <strong>portero</strong> (TLS/CRL), el <strong>doble pasaporte</strong> (mTLS) y las <strong>cubetas</strong> (<code>Buffer</code> al leer la respuesta) siguen siendo la referencia pedagógica; esta sección añade el checklist operativo sin sustituir ese marco.
         </p>
         <ul class="small">
           <li><strong>Logs:</strong> buscar mensajes de <code>TlsHandshakeError</code>, <code>CrlCheckError</code>, <code>CERT_REVOKED</code>, <code>RemoteEndpointTimeout</code> en CloudWatch Logs Insights.</li>
           <li><strong>TLS handshake fallido:</strong> comparar cadena presentada por el servidor (<code>openssl s_client -connect host:443 -showcerts</code> desde un bastión) con las CA montadas en EFS.</li>
           <li><strong><code>CERT_REVOKED</code>:</strong> verificar que la CRL en EFS es la última emitida y que el serial del certificado coincide tras normalización.</li>
-          <li><strong>Pruebas locales:</strong> montar EFS con Docker/amazonlinux o usar VPN + mount de prueba; alternativa: copiar PEM/CRL temporales con las mismas rutas que en Lambda (solo dev).</li>
+          <li><strong>Pruebas locales (opcional):</strong> montar EFS con Docker/amazonlinux o VPN solo si hace falta reproducir rutas PEM/CRL fuera de AWS; el <strong>camino de contrato</strong> sigue siendo invocación real de la Lambda contra tablas y endpoints desplegados (<a href="flow.html#estrategia-validacion">Flujo General</a>).</li>
           <li><strong>Herramientas:</strong> <code>curl --cacert</code>, <code>openssl crl</code>, AWS Systems Manager Session Manager para inspeccionar instancias con mount similar.</li>
         </ul>
         <h4 class="h6 text-secondary">Notas de producción / mejores prácticas adicionales</h4>
@@ -1152,7 +1157,7 @@ module.exports = { requestSecure, getAgent };
           <li><strong>mTLS</strong> si el endpoint exige certificado de cliente; requiere gestión de claves y rotación en EFS o Secrets Manager.</li>
           <li><strong>Rate limiting</strong> en API Gateway o WAF delante del proxy para contener abusos.</li>
           <li><strong>Pinning de SPKI</strong> solo en casos excepcionales (coste operativo alto de rotación).</li>
-          <li><strong>Tests de contrato</strong> contra un mock TLS con cadena y CRL de prueba en CI.</li>
+          <li><strong>Tests de contrato</strong> opcionales en pipeline (mock TLS) solo si el equipo los mantiene; el <strong>contrato de aceptación</strong> sigue siendo prueba contra endpoints y tablas reales en AWS, como en <a href="flow.html#estrategia-validacion">Flujo General</a>.</li>
         </ul>
         <h4 class="h6 text-secondary">Notas de producción / mejores prácticas adicionales</h4>
         <ul class="small mb-0">

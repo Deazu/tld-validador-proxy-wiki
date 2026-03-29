@@ -76,6 +76,7 @@
             <li><a href="#modelo-ideal">Modelo de datos ideal</a></li>
             <li><a href="#codigo-refactor">Propuesta <code>getCanal</code> (Proxy)</a></li>
             <li><a href="#metodo-disponible"><code>metodoDisponible</code></a></li>
+            <li><a href="#identity-manager-clase">Clase <code>IdentityManager</code> (SDK v3)</a></li>
             <li><a href="#ejemplo-evento">Ejemplo de evento</a></li>
           </ul>
         </nav>
@@ -333,6 +334,171 @@ module.exports = {
           </p>
         </section>
 
+        <section id="identity-manager-clase" class="mt-4">
+          <h2 class="h4">Evolución de clase: <code>IdentityManager</code> (contrato proxy)</h2>
+          <p>
+            Proyección formal sobre el legado <code>canal.js</code>: elimina <code>Scan</code> en caliente sustituyéndolo por <strong>GSI <code>alias-index</code></strong>,
+            usa exclusivamente <strong>AWS SDK v3</strong> (<code>@aws-sdk/client-dynamodb</code>), y trata <strong>“canal no encontrado”</strong> como error explícito (<code>CanalNotFoundError</code>) en lugar de <code>null</code> silencioso.
+            El DTO devuelto es <strong>inmutable</strong> (<code>Object.freeze</code> en profundidad) para que ningún paso posterior del handler altere accidentalmente la configuración del canal (análogo a no permitir que alguien reescriba el <strong>pasaporte</strong> en mitad del control del <strong>portero</strong>).
+          </p>
+          <p class="small text-muted">
+            Matriz de errores: <a href="data-dictionary.html#matriz-errores"><code>PROXY_ERR_ID_001</code></a>. Orquestación: <a href="flow.html#orquestador-app"><code>app.js</code></a>.
+          </p>
+          <div class="border border-secondary rounded overflow-hidden bg-dark mb-3 wiki-code-scroll">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-bottom border-secondary">
+              <span class="small text-white-50 font-monospace">lambdas/proxy/lib/IdentityManager.js (propuesta)</span>
+            </div>
+            <pre class="wiki-samconfig-pre mb-0 p-3 text-light bg-dark rounded-0"><code>'use strict';
+
+const {
+  DynamoDBClient,
+  QueryCommand,
+  GetItemCommand,
+} = require('@aws-sdk/client-dynamodb');
+const { marshall, unmarshall } = require('@aws-sdk/util-dynamodb');
+
+/**
+ * Canal u otro lookup de identidad inexistente.
+ * El handler traduce a HTTP (404 / 500 según matriz) y escribe telemetría con `detail` = `{ ...err.telemetryDetail, phase }`.
+ */
+class CanalNotFoundError extends Error {
+  constructor(lookupKey, opts = {}) {
+    super(opts.message ?? `Canal no encontrado: ${lookupKey}`);
+    this.name = 'CanalNotFoundError';
+    this.lookupKey = String(lookupKey);
+    this.code = opts.internalCode ?? 'PROXY_ERR_ID_001';
+    this.reason = opts.reason ?? 'CANAL_NOT_FOUND';
+  }
+
+  get telemetryDetail() {
+    return {
+      internalCode: this.code,
+      reason: this.reason,
+      lookupKey: this.lookupKey,
+    };
+  }
+}
+
+function deepFreeze(o) {
+  if (o === null || typeof o !== 'object') return o;
+  Object.freeze(o);
+  for (const k of Object.keys(o)) {
+    const v = o[k];
+    if (v && typeof v === 'object') deepFreeze(v);
+  }
+  return o;
+}
+
+/**
+ * Instancia inmutable: tras el constructor, no se añaden propiedades mutables.
+ * Configuración congelada en _cfg (no enumerable).
+ */
+class IdentityManager {
+  constructor(cfg) {
+    const frozen = Object.freeze({
+      tableCanal: cfg.tableCanal,
+      tableLlave: cfg.tableLlave,
+      tableOperacion: cfg.tableOperacion,
+      aliasGsiName: cfg.aliasGsiName,
+      client: cfg.client instanceof DynamoDBClient ? cfg.client : new DynamoDBClient({}),
+    });
+    Object.defineProperty(this, '_cfg', { value: frozen, enumerable: false });
+    Object.freeze(this);
+  }
+
+  async resolveChannel(idOrAlias) {
+    const { client, tableCanal, tableLlave, tableOperacion, aliasGsiName } = this._cfg;
+    let row = await this.#queryCanalPorId(client, tableCanal, idOrAlias);
+    if (!row) row = await this.#queryCanalPorAlias(client, tableCanal, aliasGsiName, idOrAlias);
+    if (!row) throw new CanalNotFoundError(idOrAlias);
+
+    const canal = unmarshall(row);
+    await this.#hydrateLlaves(client, tableLlave, canal);
+    canal.operaciones = await this.#loadOperaciones(client, tableOperacion, canal.idCanal);
+    return deepFreeze(canal);
+  }
+
+  metodoDisponible(canalDto, metodo) {
+    if (!canalDto.operaciones || canalDto.operaciones.length === 0) return false;
+    return canalDto.operaciones.some(
+      (o) =&gt; o.operacion === metodo &amp;&amp; String(o.estado).toUpperCase() === 'Y'
+    );
+  }
+
+  async #queryCanalPorId(client, table, id) {
+    const out = await client.send(
+      new GetItemCommand({
+        TableName: table,
+        Key: marshall({ idCanal: id }),
+      })
+    );
+    return out.Item ?? null;
+  }
+
+  async #queryCanalPorAlias(client, table, indexName, alias) {
+    if (!indexName) return null;
+    const out = await client.send(
+      new QueryCommand({
+        TableName: table,
+        IndexName: indexName,
+        KeyConditionExpression: 'alias = :a',
+        ExpressionAttributeValues: marshall({ ':a': String(alias).toLowerCase() }),
+        Limit: 1,
+      })
+    );
+    return out.Items?.[0] ?? null;
+  }
+
+  async #hydrateLlaves(client, tableLlave, canal) {
+    for (const k of ['llaveCifrado', 'llaveDescifrado']) {
+      const v = canal[k];
+      if (typeof v === 'string' &amp;&amp; v.length &gt; 0 &amp;&amp; !v.startsWith('arn:')) {
+        canal[k] = await this.#getLlave(client, tableLlave, v);
+      }
+    }
+  }
+
+  async #getLlave(client, tableLlave, idLlave) {
+    const out = await client.send(
+      new GetItemCommand({
+        TableName: tableLlave,
+        Key: marshall({ idLlave }),
+      })
+    );
+    if (!out.Item) {
+      throw new CanalNotFoundError(idLlave, {
+        internalCode: 'PROXY_ERR_ENC_001',
+        reason: 'LLAVE_NOT_FOUND',
+        message: `Llave no encontrada: ${idLlave}`,
+      });
+    }
+    return unmarshall(out.Item);
+  }
+
+  async #loadOperaciones(client, tableOperacion, idCanal) {
+    const out = await client.send(
+      new QueryCommand({
+        TableName: tableOperacion,
+        KeyConditionExpression: 'idCanal = :id',
+        ExpressionAttributeValues: marshall({ ':id': idCanal }),
+      })
+    );
+    return (out.Items ?? []).map((item) =&gt; unmarshall(item));
+  }
+}
+
+module.exports = { IdentityManager, CanalNotFoundError };
+</code></pre>
+          </div>
+          <ul class="small mb-0">
+            <li><strong>GetItem por id:</strong> con PK <code>idCanal</code> sin SK, la resolución por id es un único <code>GetItemCommand</code> (menos RTT que <code>Query</code>).</li>
+            <li><strong>Llave ausente:</strong> mismo tipo de error con <code>internalCode: PROXY_ERR_ENC_001</code> y <code>reason: LLAVE_NOT_FOUND</code>; el handler no debe ramificar strings, solo propagar <code>err.telemetryDetail</code> al <code>emit</code> de telemetría.</li>
+            <li><strong>Inmutabilidad:</strong> <code>deepFreeze</code> impide mutar <code>canal.operaciones.push(...)</code> por accidente (nadie reescribe el <strong>pasaporte</strong> tras el <strong>portero</strong>); si alguna utilidad interna necesita copia mutable, clonar antes de congelar.</li>
+            <li><strong>Telemetría:</strong> patrón recomendado en el orquestador: <code>telemetry.emit({ correlationId, phase: 'Identity' | 'Crypto_App', outcome: 'FAIL', detail: { ...e.telemetryDetail } })</code> cuando <code>e instanceof CanalNotFoundError</code>.</li>
+            <li><strong>Runtime:</strong> métodos privados <code>#</code> requieren Node.js 14+; optional chaining requiere entorno acorde al despliegue Lambda elegido.</li>
+          </ul>
+        </section>
+
         <section id="ejemplo-evento" class="mt-4">
           <h2 class="h4">Ejemplo de evento hacia el proxy</h2>
           <pre class="bg-dark text-light p-3 rounded mb-0"><code>{
@@ -350,7 +516,8 @@ module.exports = {
         </section>
 
         <p class="text-muted small mt-5 mb-0">
-          Flujo: <a href="flow.html">Flujo General</a> · Logs: <a href="logger.html">Logger</a>.
+          Flujo: <a href="flow.html">Flujo General</a> (<a href="flow.html#orquestador-app">orquestador</a>) ·
+          <a href="data-dictionary.html">Diccionario de Datos</a> · Logs: <a href="logger.html">Logger</a>.
         </p>
       </div>
     </main>
