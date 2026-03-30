@@ -67,6 +67,8 @@
           <li><a href="#deteccion-dinamica">1. Detección dinámica (DynamoDB)</a></li>
           <li><a href="#whitelist-transicion">2. Transición de whitelist</a></li>
           <li><a href="#implementacion-mtls">3. mTLS (doble pasaporte)</a></li>
+          <li><a href="#resolucion-llaves-mtls">3.1 Resolución de llaves (DynamoDB → EFS)</a></li>
+          <li><a href="#regla-oro-path">3.2 Regla de oro — <code>resolverRutaSegura</code></a></li>
           <li><a href="#crl-proactiva">4. CRL proactiva y caché</a></li>
           <li><a href="#mtls-secrets-manager">5. Secrets Manager (passphrase)</a></li>
           <li><a href="#diagrama-transporte-avanzado">6. Secuencia detallada (transporte)</a></li>
@@ -119,13 +121,39 @@
           Sin ambos lados conformes, el handshake no completa la política acordada.
         </p>
         <p>
-          En <code>httpsClient.js</code>, el <code>https.Agent</code> se construye con los parámetros que Node expone para cliente TLS: además de <code>ca</code> (confianza hacia el servidor), se pueden pasar <code>cert</code> y <code>key</code> como <strong>Buffers</strong> leídos desde rutas del EFS.
+          En <code>lambdas/proxy/lib/httpsClient.js</code>, el <code>https.Agent</code> se construye con los parámetros que Node expone para cliente TLS: además de <code>ca</code> (confianza hacia el servidor), se pasan <code>cert</code> y <code>key</code> como <strong>Buffers</strong> leídos desde rutas bajo el montaje EFS (<code>/mnt/tld-llaves</code>).
           La carga debe ser <strong>bajo demanda y por perfil</strong>: solo los canales con <code>mtlsActive</code> verdadero leen esos archivos, para no exponer claves en memoria ni en disco de contenedores que no las necesitan.
         </p>
 
+        <h4 class="h6 mt-3 text-uppercase text-muted" id="resolucion-llaves-mtls">3.1. Flujo de resolución de llaves (identidad ligada a DynamoDB + EFS)</h4>
+        <p class="small">
+          La identidad del cliente mTLS del Proxy queda <strong>atada</strong> a la configuración dinámica en DynamoDB y al almacenamiento seguro en EFS. El orden de resolución es:
+        </p>
+        <ol class="small mb-3">
+          <li>El Proxy consulta la tabla <strong><code>tld-validador-canal</code></strong> para el canal en curso y obtiene el identificador de la llave de cliente, <strong><code>idLlave</code></strong> (o el atributo homólogo que enlace canal ↔ material criptográfico).</li>
+          <li>Con ese <code>idLlave</code>, consulta la tabla <strong><code>tld-validador-canal-llave</code></strong> y lee el atributo <strong><code>archivo</code></strong>: ruta relativa o nombre de fichero bajo el árbol acordado del montaje (no material de clave en claro en DynamoDB).</li>
+          <li><code>httpsClient.js</code> construye la ruta absoluta como <strong><code>/mnt/tld-llaves/</code> + <code>archivo</code></strong> (normalizando separadores según convención del equipo) y lee el PEM u otro formato acordado desde el EFS para alimentar los Buffers <code>cert</code> y <code>key</code> del <code>https.Agent</code>.</li>
+        </ol>
+        <p class="small text-muted mb-0">
+          Montaje obligatorio y postura de solo lectura: <a href="infrastructure.html#config-almacenamiento-efs">Infraestructura — almacenamiento EFS</a>. Árbol del repo: <a href="project-structure.html#httpsclient-unico">Estructura — <code>httpsClient.js</code></a>.
+        </p>
+
+        <div class="alert alert-warning small mt-3 mb-0" role="alert" id="regla-oro-path">
+          <div class="fw-semibold mb-1">Regla de oro (seguridad) — <code>resolverRutaSegura</code></div>
+          <p class="mb-2 small">
+            El Proxy <strong>debe</strong> implementar una función <code>resolverRutaSegura</code> (o equivalente con el mismo contrato) que, dado el prefijo del montaje (<code>/mnt/tld-llaves</code>) y el valor de <code>archivo</code> procedente de DynamoDB, produzca una ruta final solo si esta reside <strong>estrictamente bajo</strong> ese prefijo tras normalización (resolución de <code>..</code>, symlinks si aplica, y comparación de prefijo canónico).
+          </p>
+          <p class="mb-0 small">
+            Sin esta validación, un valor malicioso o corrupto en <code>archivo</code> (p. ej. <code>../../../etc/passwd</code>) abre <em>path traversal</em> y lectura fuera del volumen PKI. Rechazar cualquier ruta que escape del prefijo del montaje es requisito de diseño “militarizado”, no opcional.
+          </p>
+        </div>
+
         <h3 class="h5 mt-4" id="crl-proactiva">4. Optimización de la CRL (seguridad proactiva)</h3>
         <p>
-          El flujo operativo del Proxy sigue la regla <strong>“verificar antes de hablar”</strong>: una vez establecido el canal TLS y conocido el certificado del peer, se resuelve el serial (con normalización acordada con PKI), se consulta la CRL desde caché o desde EFS si expiró el TTL, y si el certificado está revocado se destruye la petición <strong>sin</strong> enviar el cuerpo HTTP de negocio.
+          El flujo operativo del Proxy sigue la regla <strong>“verificar antes de hablar”</strong>: una vez establecido el canal TLS y conocido el certificado del peer, se resuelve el serial (con normalización acordada con PKI), se consulta la CRL desde caché o desde disco si expiró el TTL, y si el certificado está revocado se destruye la petición <strong>sin</strong> enviar el cuerpo HTTP de negocio.
+        </p>
+        <p>
+          <strong>Origen de la CRL en cada conexión saliente:</strong> el fichero de revocación se lee desde la ruta definida en la variable de entorno <strong><code>LIB_RUTA_ARCHIVO_CRL</code></strong> (típicamente <code>/mnt/tld-llaves/tld-crl/crltelered.crl</code>, alineada al parámetro <code>RutaArchivoCrl</code> del <code>template.yaml</code>). Para <strong>cada</strong> conexión HTTPS saliente hacia el validador bajo el perfil Telered/PKI corporativa, el motor de transporte debe poder validar la política de revocación usando esa ruta (más una caché en proceso con TTL acordado para no releer el disco en exceso, sin debilitar la garantía de “no enviar body si la CRL indica revocado”).
         </p>
         <p>
           Esto alinea la política de seguridad con lo que espera un auditor: no basta con haber “tocado” la CRL en algún punto de la vida de la petición; debe impedir el envío de datos sensibles cuando la identidad del peer ya no es aceptable.
@@ -134,14 +162,17 @@
         <h3 class="h5 mt-4" id="mtls-secrets-manager">5. mTLS y Secrets Manager — passphrase de la llave privada</h3>
         <p>
           <strong>En tiempo de ejecución</strong> de la función (cada invocación que active mTLS, incluidos cold start y reutilización de contenedor), la passphrase se obtiene solo vía API de AWS, no al empaquetar ni al publicar la plantilla SAM.
-          Cuando la clave privada del cliente está cifrada con <strong>passphrase</strong> (PEM encryptado), esa contraseña <strong>no</strong> debe almacenarse en variables de entorno de la Lambda ni en DynamoDB.
+          Cuando la clave privada del cliente está cifrada con <strong>passphrase</strong> (PEM encryptado), esa contraseña <strong>no</strong> debe almacenarse en variables de entorno de la Lambda ni en DynamoDB <strong>en texto plano</strong>.
           Las variables de entorno aparecen en consolas de despliegue, plantillas exportadas y a veces en dumps de proceso; constituyen una superficie de fuga inaceptable para material que desbloquea el <strong>segundo pasaporte</strong> del mTLS.
+        </p>
+        <p class="small">
+          <strong>Referencia por <code>idLlave</code>:</strong> el vínculo entre el ítem de <code>tld-validador-canal-llave</code> (y su <code>idLlave</code>) y el secreto en Secrets Manager debe ser una <strong>referencia opaca</strong> (nombre de secreto derivado de <code>idLlave</code>, ARN almacenado en un atributo de referencia, o etiqueta de rotación). El valor de la passphrase reside únicamente en Secrets Manager; DynamoDB nunca almacena la passphrase legible.
         </p>
         <p>
           <strong>Flujo de recuperación recomendado (AWS Secrets Manager):</strong>
         </p>
         <ol class="small">
-          <li>En el item del canal (o en convención por entorno), guardar solo el <strong>ARN o nombre</strong> del secreto, p. ej. <code>tlsClientKeySecretArn</code>, apuntando a un secreto JSON con campos acordados (<code>passphrase</code>, rotación gestionada por IAM).</li>
+          <li>En el ítem de llave o canal, guardar solo el <strong>ARN o nombre</strong> del secreto asociado al <strong><code>idLlave</code></strong> (p. ej. <code>tlsClientKeySecretArn</code> o convención <code>…/key-passphrase/&lt;idLlave&gt;</code>), apuntando a un secreto JSON con campos acordados (<code>passphrase</code>, rotación gestionada por IAM).</li>
           <li>La Lambda, en el camino <code>mtlsActive === true</code>, invoca en caliente <code>GetSecretValue</code> (SDK v3 <code>@aws-sdk/client-secrets-manager</code>) con el rol de ejecución de la función; obtiene la passphrase <strong>en memoria</strong> solo durante la construcción del <code>https.Agent</code> de esa petición (sin materializarla en <code>Environment</code> del recurso).</li>
           <li>Leer el PEM de la clave desde EFS con <code>fs.readFile</code>; usar la passphrase recuperada para descifrar el PEM en un Buffer compatible con <code>tls.createSecureContext</code> / opciones <code>key</code> de Node (según formato: PKCS#8, RSA tradicional, etc.).</li>
           <li><strong>No</strong> persistir la passphrase en variables globales del módulo; tras crear el contexto TLS, permitir que la cadena salga de alcance y sea recolectada por GC (evitar logs, cachés y copias en <code>detail</code> de telemetría).</li>
@@ -246,7 +277,7 @@
       </section>
 
       <p class="small text-muted mt-5 mb-1">
-        <strong>Documento:</strong> Conectividad Telered y mTLS (referencia técnica). <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+        <strong>Documento:</strong> Conectividad Telered y mTLS (referencia técnica). <strong>Última actualización:</strong> <time datetime="2026-03-29">29 de marzo de 2026</time> (resolución de llaves, CRL por conexión).
       </p>
       <p class="text-muted small mb-0">
         Túnel TLS detallado: <a href="crypto-transport.html">Transporte mTLS/CRL</a>. Contrato de datos: <a href="data-dictionary.html">Diccionario de Datos</a>. Cifrado de aplicación (fuera de alcance aquí): <a href="crypto-app.html">Cifrado App</a>.

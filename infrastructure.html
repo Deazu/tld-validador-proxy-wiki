@@ -71,6 +71,8 @@
             <li><a href="#dlq-visibility">DLQ y <code>VisibilityTimeout</code></a></li>
             <li><a href="#nombres-recursos">Nombres de recursos del proxy</a></li>
             <li><a href="#iam-dynamo-canal">IAM DynamoDB — tablas de configuración de canal</a></li>
+            <li><a href="#config-almacenamiento-efs">Configuración de almacenamiento (EFS)</a></li>
+            <li><a href="#gestion-secretos-passphrase">Gestión de secretos (passphrase)</a></li>
             <li><a href="#template-completo"><code>template.yaml</code> propuesto</a></li>
           </ul>
         </nav>
@@ -79,7 +81,7 @@
           <h2 class="h3 border-0 pb-0">Criterios de diseño — referencia estructural</h2>
           <ul class="small mb-0">
             <li><strong>Orden SAM:</strong> <code>Parameters</code> (VPC, subnets, SG, timeout, EFS, rutas CA/CRL, tablas, colas), <code>Globals.Function</code> con <code>VpcConfig</code> y variables compartidas, <code>Conditions</code>, <code>Resources</code>.</li>
-            <li><strong>Red y PKI:</strong> <code>VpcConfig</code> en <code>Globals</code> y <code>FileSystemConfigs</code> por función con <code>LocalMountPath: /mnt/tld-llaves</code>, igual que en el stack de notificaciones.</li>
+            <li><strong>Red y PKI:</strong> <code>VpcConfig</code> en <code>Globals</code> y <code>FileSystemConfigs</code> por función con <code>LocalMountPath: /mnt/tld-llaves</code> (<strong>obligatorio</strong> para el Proxy; ver <a href="#config-almacenamiento-efs">almacenamiento EFS</a>), alineado al stack de notificaciones.</li>
             <li><strong>Borde soberano:</strong> solo recursos <code>AWS::Serverless::Function</code> (orquestador + worker), colas SQS y artefactos de soporte; la plantilla del proxy <strong>no define</strong> ningún recurso de API HTTP de entrada.</li>
             <li><strong>Resiliencia:</strong> <code>ProxyResilienceQueue</code> con <code>RedrivePolicy</code> hacia <code>ProxyDeadLetterQueue</code>; política de cola sin <code>Principal: '*'</code> ampliado — solo el rol de la Lambda proxy puede <code>SendMessage</code> donde aplique.</li>
           </ul>
@@ -176,6 +178,38 @@
           </ul>
           <p class="small text-muted mb-0">
             Sin esas acciones, el orquestador no puede resolver <code>urlValidador</code>, <code>retryPolicyActive</code>, <code>operationTimeoutMs</code>, etc. Ver <a href="data-dictionary.html#tabla-operacion">Diccionario — <code>tld-validador-canal-operacion</code></a>.
+          </p>
+        </section>
+
+        <section id="config-almacenamiento-efs" class="mt-5">
+          <h2 class="h3 border-0 pb-0">Configuración de almacenamiento — EFS</h2>
+          <p class="small">
+            El material PKI y las rutas de confianza del Proxy residen en <strong>Amazon EFS</strong> montado en la función Lambda. Esta wiki fija un contrato de seguridad explícito con la casa (<code>tld-notificacion</code>, <code>tld-api-alias</code>, <code>tld-api-p2m</code>): mismo prefijo de montaje y postura defensiva de solo lectura.
+          </p>
+          <ul class="small mb-3">
+            <li>
+              <strong>Punto de montaje obligatorio:</strong> el Proxy <strong>debe</strong> declarar <code>FileSystemConfigs</code> con <code>LocalMountPath: /mnt/tld-llaves</code> en <strong>todas</strong> las funciones que lean certificados, claves, CA o CRL desde el sistema de archivos. Cualquier otra ruta rompe la paridad operativa con los satélites y con la resolución documentada en <a href="connectivity-telered.html#resolucion-llaves-mtls">Conectividad Telered — resolución de llaves</a>.
+            </li>
+            <li>
+              <strong>Solo lectura (read-only) — seguridad defensiva:</strong> el acceso del rol de ejecución al volumen vía Access Point debe concebirse como <strong>exclusivamente de lectura</strong> para el Proxy: el código no debe depender de escribir en <code>/mnt/tld-llaves</code>. A nivel de plataforma, alinear el <strong>Access Point EFS</strong> (permisos POSIX / root directory) y la <strong>política IAM</strong> (<code>elasticfilesystem:ClientMount</code> y permisos mínimos; evitar conceder escritura si el macro SAM o plantilla heredada incluye un nombre tipo “Write”) de forma que, en producción, el montaje sea efectivamente <strong>solo lectura</strong>. Así se reduce el impacto de un compromiso de la Lambda: no puede alterar CRL, CA ni claves en el volumen compartido.
+            </li>
+          </ul>
+          <div class="alert alert-secondary small mb-0" role="note">
+            <strong>Plantilla de ejemplo:</strong> un fragmento SAM puede mostrar <code>EFSWriteAccessPolicy</code> por convención de macros; el <strong>objetivo de seguridad</strong> del Proxy es igualar el montaje a <strong>lectura única</strong> mediante Access Point y políticas revisadas en cada despliegue. Detalle de rutas lógicas (<code>archivo</code>, CRL): <a href="connectivity-telered.html">Conectividad Telered y mTLS</a>.
+          </div>
+        </section>
+
+        <section id="gestion-secretos-passphrase" class="mt-5">
+          <h2 class="h3 border-0 pb-0">Gestión de secretos — passphrase de llaves</h2>
+          <p class="small mb-2">
+            Si una clave privada en EFS está protegida con <strong>passphrase</strong> (PEM cifrado, PFX con contraseña, etc.), el Proxy <strong>no</strong> debe almacenar esa contraseña en DynamoDB ni en variables de entorno de la Lambda en texto plano.
+          </p>
+          <ul class="small mb-2">
+            <li><strong>Fuente autorizada:</strong> <strong>AWS Secrets Manager</strong>. El secreto se referencia de forma estable usando el <strong><code>idLlave</code></strong> (u otra convención de nombre/ARN acordada por el equipo) como clave lógica: p. ej. nombre de secreto <code>tld-validador-proxy/key-passphrase/&lt;idLlave&gt;</code> o ARN almacenado solo como referencia opaca en el ítem de <code>tld-validador-canal-llave</code> / canal, nunca el valor de la passphrase.</li>
+            <li><strong>DynamoDB:</strong> puede contener únicamente identificadores (ARN, nombre del secreto, etiquetas de versión), nunca la passphrase en claro.</li>
+          </ul>
+          <p class="small text-muted mb-0">
+            Flujo de recuperación en caliente, prohibición de env vars y límites IAM: <a href="connectivity-telered.html#mtls-secrets-manager">Conectividad Telered — Secrets Manager (passphrase)</a>.
           </p>
         </section>
 
@@ -506,7 +540,7 @@ Outputs:
         </section>
 
         <p class="text-muted small mt-5 mb-1">
-          <strong>Documento:</strong> Infraestructura SAM — Lambda + SQS. <strong>Última actualización:</strong> <time datetime="2026-03-29">29 de marzo de 2026</time>.
+          <strong>Documento:</strong> Infraestructura SAM — Lambda + SQS. <strong>Última actualización:</strong> <time datetime="2026-03-29">29 de marzo de 2026</time> (EFS solo lectura, secretos).
         </p>
       </div>
     </main>

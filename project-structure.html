@@ -93,8 +93,11 @@
 
         <div id="httpsclient-unico" class="alert alert-warning small mt-4 mb-0" role="alert">
           <div class="fw-semibold mb-1">Advertencia — soberanía del transporte</div>
+          <p class="mb-2">
+            El módulo <code>lambdas/proxy/lib/httpsClient.js</code> es el <strong>motor único de mTLS</strong> (y de la pila TLS cliente hacia el banco). Es el componente responsable de <strong>instanciar el <code>https.Agent</code></strong> de Node con los Buffers <code>cert</code>, <code>key</code> y <code>ca</code> obtenidos leyendo los ficheros correspondientes desde el EFS montado en <code>/mnt/tld-llaves</code> (tras resolver de forma segura la ruta a partir de DynamoDB; ver <a href="connectivity-telered.html#resolucion-llaves-mtls">resolución de llaves</a> y <a href="connectivity-telered.html#regla-oro-path"><code>resolverRutaSegura</code></a>).
+          </p>
           <p class="mb-0">
-            El módulo <code>lambdas/proxy/lib/httpsClient.js</code> es el <strong>motor único de mTLS</strong> (y de la pila TLS cliente hacia el banco). Cualquier cambio en certificados, CA, CRL o política de confianza del validador bancario debe concentrarse <strong>únicamente</strong> en este archivo (y en los artefactos EFS que consume) para que el impacto sea coherente en <strong>orquestador</strong> y <strong>worker</strong> sin duplicar lógica en dos handlers.
+            Cualquier cambio en certificados, CA, CRL o política de confianza del validador bancario debe concentrarse <strong>únicamente</strong> en este archivo (y en los artefactos EFS que consume) para que el impacto sea coherente en <strong>orquestador</strong> y <strong>worker</strong> sin duplicar lógica en dos handlers.
           </p>
         </div>
 
@@ -132,7 +135,7 @@
         </section>
 
         <p class="text-muted small mt-5 mb-1">
-          <strong>Documento:</strong> Estructura del repositorio. <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+          <strong>Documento:</strong> Estructura del repositorio. <strong>Última actualización:</strong> <time datetime="2026-03-29">29 de marzo de 2026</time> (<code>https.Agent</code> / EFS).
         </p>
       </div>
     </main>
