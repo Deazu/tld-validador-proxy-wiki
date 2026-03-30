@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Modelo de datos — tld-validador-proxy</title>
+  <link href="index.css" rel="stylesheet">
+</head>
+<body class="oe-wiki">
+  <header class="oe-nav">
+    <div class="oe-nav-inner">
+      <div class="oe-brand"><code>tld-validador-proxy</code></div>
+      <nav class="oe-nav-links" aria-label="Secciones">
+        <a href="index.html">Inicio</a>
+        <a href="arquitectura.html">Arquitectura</a>
+        <a href="seguridad.html">Seguridad</a>
+        <a href="datos.html" aria-current="page">Datos</a>
+        <a href="infraestructura.html">Infraestructura</a>
+        <a href="../index.html">Portal maestro</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="oe-wrap oe-article">
+    <a class="oe-back" href="index.html">← Inicio</a>
+    <h1>Soberanía de datos (DynamoDB)</h1>
+
+    <p>El comportamiento del proxy es <strong>gobernado por tablas</strong>, no por constantes dispersas en código. La fuente de verdad por operación para URL de destino, timeouts y reintentos reside principalmente en <code>tld-validador-canal-operacion</code>, complementada por <code>tld-validador-canal</code> y <code>tld-validador-canal-llave</code>.</p>
+
+    <h2>Atributos clave (contrato normativo)</h2>
+    <ul>
+      <li><code>urlOperacion</code> — URL HTTPS específica del banco para la operación.</li>
+      <li><code>retryPolicyActive</code> — interruptor explícito de reintentos de negocio (opt-in).</li>
+      <li><code>operationTimeoutMs</code> — tiempo máximo de lectura/salida granular por operación, reduciendo la dependencia de timeouts globales en variables de entorno.</li>
+    </ul>
+
+    <h2>Perfil de canal</h2>
+    <p>En <code>tld-validador-canal</code> se definen identificador de canal, alias, referencias de cifrado, perfil TLS (<code>tlsProfile</code>), y vínculos a material de llave. El detalle de PK, GSI y campos adicionales se mantiene en el diccionario histórico completo: <a href="../wiki-actual/data-dictionary.html">wiki-actual — diccionario de datos</a>.</p>
+
+    <h2>Valores conservadores</h2>
+    <p>Si falta un atributo requerido, el servicio debe implementar valores conservadores documentados (p. ej. sin reintentos, timeout por defecto) y telemetría clara, en línea con la política de la wiki histórica.</p>
+
+    <footer class="oe-footer"><a href="index.html">← Inicio</a></footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Infraestructura — tld-validador-proxy</title>
+  <link href="index.css" rel="stylesheet">
+</head>
+<body class="oe-wiki">
+  <header class="oe-nav">
+    <div class="oe-nav-inner">
+      <div class="oe-brand"><code>tld-validador-proxy</code></div>
+      <nav class="oe-nav-links" aria-label="Secciones">
+        <a href="index.html">Inicio</a>
+        <a href="arquitectura.html">Arquitectura</a>
+        <a href="seguridad.html">Seguridad</a>
+        <a href="datos.html">Datos</a>
+        <a href="infraestructura.html" aria-current="page">Infraestructura</a>
+        <a href="../index.html">Portal maestro</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="oe-wrap oe-article">
+    <a class="oe-back" href="index.html">← Inicio</a>
+    <h1>Infraestructura y despliegue</h1>
+
+    <h2>1. AWS SAM</h2>
+    <p>El proyecto nace alineado a la práctica de servicios internos maduros: <code>template.yaml</code> con funciones Lambda en VPC, <code>Globals</code> donde aplique, y <code>samconfig.toml</code> con perfiles por ambiente (<code>parameter_overrides</code> para subnets, security groups, IDs de EFS, tablas de DynamoDB, etc.).</p>
+
+    <h2>2. Funciones Lambda</h2>
+    <ul>
+      <li><strong>Orquestador</strong> — asociada a <code>lambdas/tld-validador-proxy/app.js</code>; invocada por los satélites; sin recurso de entrada HTTP en la plantilla para el tráfico de negocio hacia el validador.</li>
+      <li><strong>Worker</strong> — asociada a <code>lambdas/tld-validador-proxy-reintento/app.js</code>; disparada por SQS; comparte disciplina de dependencias mediante Lambda Layer.</li>
+    </ul>
+
+    <h2>3. Red y almacenamiento</h2>
+    <p>Las funciones se ejecutan en <strong>subnets privadas</strong> con security groups acordados. <strong>EFS</strong> proporciona el montaje <code>/mnt/tld-llaves</code> mediante Access Point. <strong>SQS</strong> incluye cola de trabajo y DLQ para análisis de fallos sostenidos.</p>
+
+    <h2>4. IAM</h2>
+    <p>Políticas mínimas: lectura de DynamoDB en las tablas de canal; <code>sqs:SendMessage</code> / consumo según rol; <code>lambda:InvokeFunction</code> <em>no</em> es requerido en el rol del proxy hacia sí mismo para reintentos (los reintentos se procesan en el worker o en la misma invocación según diseño). Los satélites reciben permiso de invocación hacia el ARN del proxy.</p>
+
+    <h2>5. Profundización</h2>
+    <p>Fragmento de plantilla, nombres de recursos y DLQ aparecen en la documentación histórica: <a href="../wiki-actual/infrastructure.html">wiki-actual — infraestructura SAM</a> (nota: la estructura de carpetas allí puede referir <code>lambdas/proxy/</code>; esta wiki vigente prioriza <code>lambdas/tld-validador-proxy/</code> según la definición de producto).</p>
+
+    <footer class="oe-footer"><a href="index.html">← Inicio</a></footer>
+  </div>
+</body>
+</html>

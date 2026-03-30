@@ -3,223 +3,100 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>tld-validador-proxy — Inicio &amp; mapa del proyecto</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="css/wiki.css" rel="stylesheet">
-  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
-  <script defer src="js/wiki-init.js"></script>
-  <script defer src="js/wiki-nav-inject.js"></script>
-  <script defer src="js/menu-sync.js"></script>
-  <script defer src="js/wiki-chrome.js"></script>
+  <title>tld-validador-proxy-wiki — Portal maestro</title>
+  <style>
+    :root {
+      --p-bg: #0c1220;
+      --p-card: #151d2e;
+      --p-border: #2a3548;
+      --p-text: #e6eaf2;
+      --p-muted: #8b98a8;
+      --p-accent: #5b9fff;
+      --p-radius: 14px;
+      --p-max: 40rem;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--p-bg);
+      color: var(--p-text);
+      line-height: 1.55;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.25rem 3rem;
+    }
+    .p-wrap { max-width: var(--p-max); width: 100%; }
+    h1 {
+      font-size: clamp(1.5rem, 4vw, 1.85rem);
+      font-weight: 700;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+    }
+    .p-sub {
+      color: var(--p-muted);
+      margin: 0 0 2rem;
+      font-size: 0.95rem;
+    }
+    .p-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    a.p-card {
+      display: block;
+      padding: 1.35rem 1.5rem;
+      background: var(--p-card);
+      border: 1px solid var(--p-border);
+      border-radius: var(--p-radius);
+      color: inherit;
+      text-decoration: none;
+      transition: border-color 0.15s ease, transform 0.12s ease;
+    }
+    a.p-card:hover {
+      border-color: var(--p-accent);
+      transform: translateY(-2px);
+    }
+    a.p-card h2 {
+      margin: 0 0 0.4rem;
+      font-size: 1.1rem;
+      color: var(--p-accent);
+    }
+    a.p-card p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--p-muted);
+    }
+    .p-foot {
+      margin-top: 2.5rem;
+      font-size: 0.8rem;
+      color: var(--p-muted);
+    }
+    code { font-size: 0.95em; opacity: 0.95; }
+  </style>
 </head>
-<body class="wiki-body bg-light">
-  <div class="wiki-layout">
-    <aside class="wiki-sidebar wiki-sidebar--dark p-0 vh-100 position-sticky top-0 d-none d-md-flex flex-column">
-      <div class="wiki-sidebar-inner wiki-sidebar-inner--nav p-2 flex-grow-1 overflow-auto">
-        <a href="index.html" class="wiki-sidebar-brand text-decoration-none text-white d-block mb-2 px-2">
-          <span class="wiki-sidebar-brand-title">tld-validador-proxy</span>
-          <span class="wiki-sidebar-brand-sub d-block">Portal de ingeniería</span>
-        </a>
-        <nav class="nav flex-column wiki-sidebar-nav pt-1" aria-label="Navegación principal">
-          <div id="wikiSidebarNavMount"></div>
-        </nav>
-      </div>
-    </aside>
-    <main class="wiki-content flex-grow-1">
-      <div class="wiki-mobile-bar d-md-none mb-3">
-        <button class="btn btn-wiki-menu w-100 rounded-pill py-2 d-flex align-items-center justify-content-center gap-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#wikiMenuOffcanvas" aria-controls="wikiMenuOffcanvas" aria-label="Abrir menú de navegación">
-          <span aria-hidden="true">☰</span> Menú wiki
-        </button>
-      </div>
-      <div class="offcanvas offcanvas-start wiki-offcanvas wiki-offcanvas--dark" tabindex="-1" id="wikiMenuOffcanvas" aria-labelledby="wikiMenuOffcanvasLabel">
-        <div class="offcanvas-header border-bottom border-secondary border-opacity-25">
-          <div class="d-flex flex-column">
-            <h2 class="h6 offcanvas-title text-white mb-0" id="wikiMenuOffcanvasLabel">tld-validador-proxy</h2>
-            <span class="small text-white-50">Mapa mental de la arquitectura</span>
-          </div>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
-        </div>
-        <div class="offcanvas-body p-2 pt-1">
-          <nav class="nav flex-column wiki-sidebar-nav" aria-label="Navegación móvil">
-            <div id="wikiOffcanvasNavMount"></div>
-          </nav>
-        </div>
-      </div>
-
-      <div class="wiki-content-inner p-4 p-lg-5">
-        <div class="wiki-hero wiki-hero--dashboard">
-          <span class="wiki-hero-badge">Principios de Diseño Seguro</span>
-          <h1 class="h2 mb-2 text-white">Misión del <code class="text-info">tld-validador-proxy</code></h1>
-          <p class="wiki-hero-tagline mb-3">Soberanía tecnológica y seguridad proactiva para la validación de canales</p>
-          <p class="lead mb-0">
-            Portal técnico: un solo punto de salida controlado hacia validadores — cifrado híbrido correcto, <strong>Conectividad Segura (TLS / mTLS)</strong> con CA y CRL en EFS, <strong>identificación del proxy ante el validador mediante certificado de cliente en TLS / mTLS</strong> cuando el canal lo exige, identidad de negocio en DynamoDB y trazas sin filtrar secretos.
-          </p>
-        </div>
-
-        <div class="card border-0 shadow wiki-cta-stakeholder mb-4 overflow-hidden">
-          <div class="card-body p-4 p-md-4 d-flex flex-column flex-md-row align-items-md-center gap-3">
-            <div class="flex-grow-1">
-              <span class="badge rounded-pill text-bg-primary mb-2">Lectura recomendada para stakeholders</span>
-              <h2 class="h5 mb-2">¿Por qué este proyecto? — <a href="business-value.html" class="text-decoration-none text-reset">Valor y justificación</a></h2>
-              <p class="small text-secondary mb-2">
-                Además del contexto legacy (<code>tld-api-cuenta-nombre</code>, <code>tld-util</code>, bifurcación <code>axios</code> / CA Telered) y del cifrado de aplicación centralizado, la página concentra tres pilares que explican la Lambda:
-              </p>
-              <ul class="small text-secondary mb-3 ps-3 wiki-cta-stakeholder-list">
-                <li class="mb-1"><strong>Corrección del flujo de validación CRL</strong> <span class="text-muted">(Seguridad proactiva: revocación antes del envío del body).</span></li>
-                <li class="mb-1"><strong>Identidad soberana del Proxy (TLS / mTLS)</strong> <span class="text-muted">(certificado de cliente mTLS hacia el validador cuando el canal lo exige, perfil por canal en DynamoDB).</span></li>
-                <li class="mb-0"><strong>Dashboard de Salud de Canales</strong> <span class="text-muted">(Observabilidad forense por fase de Conectividad Segura TLS y mTLS, CRL, HTTP y <code>PROXY_ERR_*</code>).</span></li>
-              </ul>
-              <p class="mb-0 small text-secondary">
-                Profundiza en hallazgos, diagramas comparativos y telemetría en el documento enlazado.
-              </p>
-            </div>
-            <a class="btn btn-dark btn-lg px-4 flex-shrink-0 align-self-stretch align-self-md-center" href="business-value.html">Ir a valor y justificación</a>
-          </div>
-        </div>
-
-        <div class="alert alert-info border-start border-4 border-info wiki-mission-banner mb-4" role="status">
-          <p class="mb-2"><strong>Nuestra Misión:</strong> Garantizar la integridad y confidencialidad en el transporte de datos financieros, eliminando la deuda técnica de validaciones reactivas y estableciendo una identidad digital soberana mediante <strong>Conectividad Segura TLS / mTLS</strong> (autenticación mutua donde el canal lo exige) y observabilidad forense alineada a <strong>Validación de Confianza Cero (Zero Trust)</strong> en el perímetro hacia validadores.</p>
-          <p class="mb-0"><strong>Gestión de disponibilidad:</strong> El Proxy incorpora un <strong>Sistema de Resiliencia Opt-in</strong> (bajo demanda): gobernado por DynamoDB — nada es automático si no está definido en tabla — con políticas explícitas, cola SQS y worker cuando el despliegue lo habilite. La orquestación y la configuración operativa se documentan en <a href="resilience-strategy.html">Estrategia y Capa 1</a>, <a href="async-worker.html">SQS y Capa 2</a> y <a href="resilience-config.html">Manual de configuración</a>. Contexto de negocio y auditoría legacy: <a href="business-value.html#resiliencia-notificaciones">Valor y justificación — §4</a>.</p>
-        </div>
-
-        <p class="text-center mx-auto mb-4" style="max-width: 42rem;">
-          El proxy es el <strong>único punto de salida controlado</strong> hacia los canales validadores remotos: centraliza
-          <strong>cifrado híbrido</strong> (RSA/KMS + AES), <strong>Conectividad Segura (TLS / mTLS)</strong> con CA en EFS, comprobación de <strong>CRL</strong>
-          y la resolución de <strong>identidad</strong> desde DynamoDB, de modo que los microservicios satélite no repitan ni omitan parámetros críticos.
-          No solo <strong>valida al validador</strong> con la cadena corporativa: cuando el canal lo define, el proxy <strong>presenta su propio certificado de cliente</strong> para que el socio remoto autentique nuestra salida igual que nosotros autenticamos la suya.
-        </p>
-
-        <div class="wiki-section-eyebrow text-center">Navegación técnica</div>
-        <h2 class="h5 text-center text-secondary mb-3">Entra por componente</h2>
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3 wiki-nav-dashboard mb-5">
-          <div class="col">
-            <div class="card h-100 shadow-sm">
-              <a class="card-body card-link p-3" href="flow.html">
-                <div class="text-muted small mb-1">Orquestación</div>
-                <h3 class="card-title h5 mb-2">Flujo maestro</h3>
-                <p class="small text-secondary mb-0">Pseudo-código del handler, contrato entre <code>IdentityManager</code>, cifrado y transporte — el corazón de la Lambda.</p>
-              </a>
-            </div>
-          </div>
-          <div class="col">
-            <div class="card h-100 shadow-sm">
-              <a class="card-body card-link p-3" href="connectivity-telered.html">
-                <div class="text-muted small mb-1">PKI y red</div>
-                <h3 class="card-title h5 mb-2">Seguridad TLS / mTLS</h3>
-                <p class="small text-secondary mb-0">Perfiles de <strong>Conectividad Segura (TLS / mTLS)</strong> en DynamoDB, whitelist híbrida, certificado de cliente, CRL y Secrets Manager — referencia técnica.</p>
-              </a>
-            </div>
-          </div>
-          <div class="col">
-            <div class="card h-100 shadow-sm">
-              <a class="card-body card-link p-3" href="data-dictionary.html">
-                <div class="text-muted small mb-1">Contrato de datos</div>
-                <h3 class="card-title h5 mb-2">Estructura de datos</h3>
-                <p class="small text-secondary mb-0">PK/SK, GSI, TTL de telemetría, matriz <code>PROXY_ERR_*</code> y tablas de canal.</p>
-              </a>
-            </div>
-          </div>
-          <div class="col">
-            <div class="card h-100 shadow-sm">
-              <a class="card-body card-link p-3" href="crypto-app.html">
-                <div class="text-muted small mb-1">Payload de negocio</div>
-                <h3 class="card-title h5 mb-2">Cifrado híbrido</h3>
-                <p class="small text-secondary mb-0">AES/KMS/RSA y firma completa de <code>operacionesPaquete</code> — el sobre de aplicación, no el túnel de <strong>Conectividad Segura (TLS / mTLS)</strong>.</p>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div class="wiki-section-eyebrow text-center">Corazón del sistema</div>
-        <h2 class="h4 text-center mb-2">Secuencia maestra: orquestación + telemetría lateral</h2>
-        <p class="small text-muted text-center mx-auto mb-3" style="max-width: 40rem;">
-          Cada fase crítica deja huella en <strong>Telemetría</strong> (DynamoDB): no bloquea el camino feliz si falla el <code>PutItem</code> (<a href="crypto-transport.html#fail-safe-telemetry">política fail-safe</a>), pero en condiciones normales reconstruyes el incidente como si leyeras la <strong>cinta negra</strong> junto al <strong>portero</strong>. El borde de entrada al proxy es <strong>Consumer Service → AWS SDK (<code>Invoke</code>) → función Lambda privada</strong> (<strong>ARN del Proxy</strong> o <strong>nombre de la función</strong>) — ver <a href="project-structure.html">Estructura del repositorio</a>, <a href="infrastructure.html">Infraestructura SAM</a> y <a href="flow.html">Flujo General</a>.
-        </p>
-        <div class="wiki-mermaid-wrap shadow-sm mb-3 wiki-diagram-heart">
-          <pre class="mermaid">sequenceDiagram
-    autonumber
-    participant Cons as Consumer_Service
-    participant Sdk as AWS_SDK_Invoke
-    participant Log as Logger
-    participant Idn as IdentityManager
-    participant Op as OperacionesPaquete
-    participant Htt as httpsClient
-    participant Tel as Telemetria_emit
-    participant Rem as Validador_remoto_HTTPS
-
-    Cons->>Sdk: Invoke nombre o ARN del Proxy
-    Sdk->>Log: evento y contexto
-    Log->>Tel: emit Logger meta
-    Log->>Idn: resolveChannel DynamoDB
-    Idn->>Tel: emit Identity fase
-    Idn-->>Log: DTO canal inmutable
-    Log->>Op: cerrarPaquete
-    Op->>Tel: emit Crypto_App
-    Op->>Htt: body cifrado perfil TLS_mTLS
-    Htt->>Tel: emit Handshake CRL
-    alt Path_OK_TLS_CRL
-      Note over Htt,Rem: TLS y mTLS cert cliente si canal
-      Htt->>Rem: POST body cifrado
-      Rem-->>Htt: respuesta HTTP
-      Htt->>Tel: emit HTTP_Response
-      Htt-->>Op: bytes y status
-    else Path_FAIL_CRL
-      Htt->>Htt: ABORTA_sin_body_validador
-      Htt->>Tel: emit error PROXY_ERR
-      Htt-->>Op: error controlado
-    end
-    Op-->>Log: abrir paquete o error
-    Log-->>Sdk: payload retorno Lambda
-    Sdk-->>Cons: resultado Invoke</pre>
-        </div>
-        <p class="small mx-auto mb-5" style="max-width: 42rem;">
-          La Lambda actúa como <strong>director de orquesta</strong>: <code>IdentityManager</code> sustituye el legado de <code>canal.js</code> con lecturas <code>GetItem</code>/GSI y DTO congelado (nadie reescribe el <strong>pasaporte</strong> a mitad del control); <code>httpsClient</code> concentra el <strong>portero</strong> de <strong>Conectividad Segura (TLS / mTLS)</strong>, la CRL y el <strong>doble pasaporte TLS / mTLS</strong>: el validador prueba su identidad hacia nosotros y, cuando el perfil del canal lo exige, nosotros presentamos <strong>certificado de cliente</strong> hacia él. Entre ambos, <code>OperacionesPaquete</code> llena las <strong>cubetas</strong> de cifrado de aplicación antes de que un solo byte sensible cruce el cable hacia el validador.
-          El <strong>porqué estratégico</strong> del proyecto (auditoría, riesgos legacy, centralización de cifrado y telemetría) está concentrado en <a href="business-value.html">Valor y justificación</a>.
-        </p>
-
-        <h2 class="h4">Contrato de entrada (ejemplo)</h2>
-        <p>Evento orientativo para invocación al proxy (sin enviar <code>modo</code>):</p>
-        <pre class="bg-dark text-light p-3 rounded"><code>{
-  "idCanalEmisor": "1005",
-  "idCanalValidador": "1000",
-  "metodo": "0001",
-  "dataPlana": {
-    "idPeticion": "uuid-opcional-si-el-proxy-no-lo-genera",
-    "metodo": "0001",
-    "solicitudes": []
-  }
-}</code></pre>
-
-        <h2 class="h4">Alcance</h2>
-        <ul>
-          <li>Orquestación: dos lecturas de canal (emisor / validador), cifrado hacia el <strong>validador remoto (HTTPS)</strong>, con política unificada de <strong>Conectividad Segura (TLS / mTLS)</strong>.</li>
-          <li>Telemetría técnica en DynamoDB (tabla dedicada) para handshake, CRL, capa TLS / mTLS, HTTP y tiempos.</li>
-          <li>Compatibilidad de despliegue con el estándar SAM de los repos existentes (VPC, EFS, KMS MRK).</li>
-        </ul>
-
-        <div class="wiki-tech-stack mt-5 mb-4">
-          <h3>Stack tecnológico</h3>
-          <ul>
-            <li><strong>Runtime:</strong> Node.js 20.x (LTS)</li>
-            <li><strong>AWS SDK v3</strong> — clientes modulares (<code>@aws-sdk/client-dynamodb</code>, <code>@aws-sdk/lib-dynamodb</code>, <code>@aws-sdk/client-secrets-manager</code>, etc.)</li>
-            <li><strong>DynamoDB</strong> — identidad de canal, operaciones, llaves referenciadas y telemetría forense</li>
-            <li><strong>Amazon EFS</strong> — montaje de CA, CRL, certificados y claves de cliente para <strong>Conectividad Segura (TLS / mTLS)</strong></li>
-            <li><strong>AWS Secrets Manager</strong> — passphrase de clave privada para cliente TLS / mTLS (nunca en variables de entorno)</li>
-          </ul>
-        </div>
-
-        <p class="text-muted small mt-2 mb-0">
-          Wiki estática — <code>index.html</code>. <a href="business-value.html">Valor y justificación</a> ·
-          Cifrado de payload: <a href="crypto-app.html">Cifrado App</a> ·
-          Conectividad Segura TLS mTLS y CRL: <a href="crypto-transport.html#diagrama-interaccion">Transporte mTLS/CRL</a> ·
-          <a href="connectivity-telered.html">Conectividad Telered</a> ·
-          <a href="flow.html">Flujo General</a> · <a href="resilience-strategy.html">Sistema de Resiliencia</a> · <a href="data-dictionary.html">Diccionario de Datos</a> ·
-          <a href="business-value.html#monitoreo-salud">Monitoreo y salud de canales</a> ·
-          <a href="identity.html">Identity Manager</a> · <a href="logger.html">Logger</a>.
-        </p>
-      </div>
-    </main>
+<body>
+  <div class="p-wrap">
+    <h1><code>tld-validador-proxy-wiki</code></h1>
+    <p class="p-sub">Portal de acceso a la documentación del repositorio. El histórico completo se conserva bajo <code>wiki-actual/</code>.</p>
+    <nav class="p-grid" aria-label="Entradas principales">
+      <a class="p-card" href="wiki-otro-enfoque/index.html">
+        <h2>Nueva wiki (otro enfoque)</h2>
+        <p>Documentación vigente alineada a la definición de producto: estructura <code>lambdas/tld-validador-proxy/</code>, modelo asíncrono SQS por defecto, mTLS y DynamoDB.</p>
+      </a>
+      <a class="p-card" href="wiki-retrospectiva/comparativa-y-retrospectiva.html">
+        <h2>Reporte de auditoría</h2>
+        <p>Comparativa retrospectiva, estudios de la wiki anterior y de la nueva definición; hojas de estilo del reporte.</p>
+      </a>
+      <a class="p-card" href="wiki-actual/index.html">
+        <h2>Wiki histórica (legacy)</h2>
+        <p>Copia íntegra del sitio previo a la reorganización: todas las páginas HTML, CSS, JS y scripts en su estructura original.</p>
+      </a>
+    </nav>
+    <p class="p-foot">Repositorio Git y metadatos permanecen en la raíz (<code>.git</code>, <code>.gitattributes</code>).</p>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Análisis — Nueva definición del proyecto tld-validador-proxy</title>
+  <link href="reporte-estilos.css" rel="stylesheet">
+</head>
+<body class="reporte-doc">
+  <nav class="reporte-nav" aria-label="Navegación del reporte documental">
+    <div class="reporte-nav-inner">
+      <div class="reporte-nav-brand">
+        Reporte documental — tld-validador-proxy
+        <small>Auditoría de sistemas y QA documental</small>
+      </div>
+      <div class="reporte-nav-links">
+        <a href="estudio-wiki-actual.html">1. Wiki actual</a>
+        <a href="estudio-nueva-definicion.html" aria-current="page">2. Nueva definición</a>
+        <a href="comparativa-y-retrospectiva.html">3. Comparativa</a>
+        <a href="../index.html">Portal maestro</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="reporte-wrap">
+    <header class="reporte-header">
+      <h1>Análisis de la «Definición del Proyecto» — texto estándar 2026</h1>
+      <p class="reporte-meta">
+        Desglose estructural del documento normativo proporcionado al equipo. No modifica el texto fuente; lo interpreta para trazabilidad documental. <time datetime="2026-03-29">29 de marzo de 2026</time>.
+      </p>
+    </header>
+
+    <section class="reporte-section">
+      <h2>1. Identidad y propósito</h2>
+      <h3>1.1. Problema central</h3>
+      <p>El texto define el objetivo como <strong>centralizar el tráfico hacia los Canales Validadores</strong>, eliminando duplicación de lógica técnica repartida entre varios repositorios.</p>
+      <h3>1.2. Alcance explícito de repositorios legacy / satélites</h3>
+      <p>La definición enumera: <code>tld-api-alias</code> (con matiz: proceso de <strong>inactividad</strong>), <code>tld-api-cuenta-nombre</code>, <code>tld-api-p2m</code>, <code>tld-api-r2p</code>, <code>tld-notificacion</code> y <code>tld-util</code>. Esto fija un <strong>perímetro de sustitución gradual</strong> más amplio que el que la wiki suele citar página a página.</p>
+      <h3>1.3. Objetivos clave declarados</h3>
+      <ul>
+        <li><strong>mTLS:</strong> capa de seguridad robusta para conexiones con bancos.</li>
+        <li><strong>Evolución de reintentos:</strong> migrar y optimizar la lógica hoy en <code>tld-notificacion</code>, con visión de <strong>reducir o abandonar</strong> ese repo para esos flujos.</li>
+      </ul>
+      <h3>1.4. Fase de preparación</h3>
+      <p>Se establece como previo al desarrollo formal: (a) <strong>wiki centralizada</strong> para estudio y estándares; (b) <strong>reutilización de estándares</strong> de infraestructura existentes (<code>samconfig.toml</code>, <code>template.yaml</code> tomados de un repo estable); (c) <strong>mismo árbol de directorios</strong> que otros servicios de la organización.</p>
+    </section>
+
+    <section class="reporte-section">
+      <h2>2. Árbol de directorios propuesto en la definición</h2>
+      <p>El texto incluye un esquema explícito:</p>
+      <pre class="reporte-pre">tld-validador-proxy/
+├── lambdas/
+│   ├── tld-validador-proxy/
+│   │   ├── app.js
+│   │   └── lib/
+│   ├── tld-validador-proxy-reintento/
+│   │   ├── app.js
+│   │   └── lib/
+│   └── layer/
+│       └── nodejs/
+│           └── package.json
+├── template.yaml
+└── samconfig.toml</pre>
+      <p class="reporte-callout reporte-callout--info">
+        <strong>Nota de análisis:</strong> Esta convención de nombres (<code>tld-validador-proxy/</code> y <code>tld-validador-proxy-reintento/</code> bajo <code>lambdas/</code>, con <code>app.js</code>) es un <strong>requerimiento de estructura</strong> independiente de la wiki actual, que documenta <code>lambdas/proxy/orchestrator.js</code> y <code>worker.js</code>.
+      </p>
+    </section>
+
+    <section class="reporte-section">
+      <h2>3. Arquitectura de conectividad</h2>
+      <ul>
+        <li><strong>Consumo interno:</strong> sin API Gateway; acceso exclusivo vía <strong>AWS SDK (Lambda Invoke)</strong>.</li>
+        <li><strong>Modelo de una capa (propuesta principal):</strong> flujo delegado a <strong>SQS + Worker</strong> para ejecución y reintentos en segundo plano — descrita como arquitectura base en la wiki.</li>
+        <li><strong>Modelo de dos capas (alternativa de resiliencia / HA):</strong>
+          <ul>
+            <li><strong>Capa 1 síncrona:</strong> orquestador intenta llamada inmediata; ante 5xx, reintentos en caliente según política.</li>
+            <li><strong>Capa 2 asíncrona:</strong> al agotar intentos o timeout de Capa 1, mensaje a <strong>SQS</strong> para procesamiento posterior.</li>
+          </ul>
+        </li>
+      </ul>
+      <p class="reporte-callout reporte-callout--warning">
+        <strong>Énfasis normativo:</strong> En la definición, el modelo <strong>asíncrono SQS+worker</strong> aparece como «propuesta principal»; en la wiki, Capa 1 y Capa 2 están documentadas con mayor simetría (Capa 1 como resiliencia opt-in síncrona). La comparativa debe reconciliar este matiz de prioridad.
+      </p>
+    </section>
+
+    <section class="reporte-section">
+      <h2>4. Seguridad y mTLS (EFS)</h2>
+      <ul>
+        <li><strong>Punto de lectura único:</strong> montaje EFS en <code>/mnt/tld-llaves</code>.</li>
+        <li><strong>Gestión dinámica de llaves:</strong> rutas no hardcodeadas; resolución vía <code>tld-validador-canal-llave</code> y atributo <code>archivo</code>.</li>
+        <li><strong>CRL:</strong> uso obligatorio de listas de revocación en EFS para integridad de cada conexión.</li>
+      </ul>
+    </section>
+
+    <section class="reporte-section">
+      <h2>5. Modelo de datos (soberanía DynamoDB)</h2>
+      <p>El proxy gobernado por <code>tld-validador-canal</code> y <code>tld-validador-canal-operacion</code>, con atributos clave explícitos:</p>
+      <ul>
+        <li><code>urlOperacion</code> — URL específica del banco.</li>
+        <li><code>retryPolicyActive</code> — activar/desactivar reintentos.</li>
+        <li><code>operationTimeoutMs</code> — timeout granular por banco, sustituyendo dependencia de env vars globales.</li>
+      </ul>
+    </section>
+
+    <section class="reporte-section">
+      <h2>6. Estándar de código</h2>
+      <ul>
+        <li><code>lambdas/proxy/handler.js</code> — punto de entrada del <strong>Orquestador</strong>.</li>
+        <li><code>lambdas/proxy/lib/httpsClient.js</code> — módulo único de negociación TLS y peticiones vía <strong>Axios</strong>.</li>
+        <li><code>lambdas/layer/nodejs/</code> — Lambda Layer para dependencias (<code>@aws-sdk</code>, <code>axios</code>).</li>
+      </ul>
+    </section>
+
+    <section class="reporte-section">
+      <h2>7. Resumen de cambios explícitos en el texto normativo</h2>
+      <ol>
+        <li>Contextualización de <code>tld-api-alias</code> al proceso de inactividad.</li>
+        <li>Integración de estándares <code>samconfig.toml</code> / <code>template.yaml</code>.</li>
+        <li>Clarificación de la wiki como fase previa al código.</li>
+        <li>Mantenimiento de la jerarquía de capas de arquitectura y seguridad ya validadas.</li>
+      </ol>
+    </section>
+
+    <section class="reporte-section reporte-role-box">
+      <h2>Análisis de rol — Tech Lead: función del texto «Definición del Proyecto»</h2>
+      <p>Este documento actúa como <strong>charter normativo de producto</strong> (product definition / scope baseline): fija el <em>qué</em> y el <em>por qué</em> antes de que el código y la wiki detallada converjan. No sustituye por sí solo el diseño de bajo nivel (firmas de handler, nombres de archivo, matriz IAM), pero sí orienta decisiones de prioridad (p. ej. centralización, mTLS, sustitución de reintentos de notificación, árbol de carpetas).</p>
+      <p>Para QA documental, su función es servir de <strong>criterio de aceptación documental</strong>: al revisar la wiki o el repositorio de aplicación, se puede preguntar «¿el artefacto actual cumple esta definición?» y registrar brechas. Si el texto y la wiki divergen (nombres de carpetas, handler principal, capa principal async vs sync), la definición gana a nivel de <strong>intención de negocio</strong> hasta que el equipo explícitamente actualice el charter o la wiki.</p>
+    </section>
+
+    <footer class="reporte-footer">
+      Fuente analizada: texto «Definición del Proyecto: tld-validador-proxy» entregado en el encargo de retrospectiva (marzo 2026).
+    </footer>
+  </div>
+</body>
+</html>

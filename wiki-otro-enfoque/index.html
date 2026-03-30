@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tld-validador-proxy — Wiki (definición vigente)</title>
+  <link href="index.css" rel="stylesheet">
+</head>
+<body class="oe-wiki">
+  <header class="oe-nav">
+    <div class="oe-nav-inner">
+      <div class="oe-brand"><code>tld-validador-proxy</code> — documentación vigente</div>
+      <nav class="oe-nav-links" aria-label="Secciones">
+        <a href="index.html" aria-current="page">Inicio</a>
+        <a href="arquitectura.html">Arquitectura</a>
+        <a href="seguridad.html">Seguridad</a>
+        <a href="datos.html">Datos</a>
+        <a href="infraestructura.html">Infraestructura</a>
+        <a href="../index.html">Portal maestro</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="oe-wrap">
+    <section class="oe-hero">
+      <p class="oe-badge">Nueva definición del proyecto — prioridad normativa</p>
+      <h1>Un solo camino hacia los validadores</h1>
+      <p class="oe-lead">
+        El <strong>tld-validador-proxy</strong> centraliza el tráfico hacia los canales validadores, sustituyendo la lógica duplicada en satélites
+        (<code>tld-api-alias</code> —inactividad—, <code>tld-api-cuenta-nombre</code>, <code>tld-api-p2m</code>, <code>tld-api-r2p</code>, <code>tld-notificacion</code>, <code>tld-util</code>).
+        El consumo es <strong>exclusivamente interno</strong> mediante <strong>AWS Lambda Invoke</strong> (SDK). La arquitectura por defecto es <strong>asíncrona (Amazon SQS + worker)</strong> para reintentos y desacople temporal; el modelo síncrono con reintentos en caliente queda como capacidad opt-in cuando negocio y datos lo autoricen.
+      </p>
+    </section>
+
+    <nav class="oe-grid" aria-label="Mapa de la wiki">
+      <a class="oe-card" href="arquitectura.html">
+        <h2>Arquitectura</h2>
+        <p>Estructura de repositorio (<code>app.js</code>), flujo Invoke, cola SQS, worker de reintento y evolución respecto a <code>tld-notificacion</code>.</p>
+      </a>
+      <a class="oe-card" href="seguridad.html">
+        <h2>Seguridad</h2>
+        <p>mTLS, EFS en <code>/mnt/tld-llaves</code>, resolución de llaves, CRL y secretos (passphrase).</p>
+      </a>
+      <a class="oe-card" href="datos.html">
+        <h2>Datos</h2>
+        <p>Soberanía en DynamoDB: <code>tld-validador-canal</code>, <code>tld-validador-canal-operacion</code>, timeouts y políticas de reintento.</p>
+      </a>
+      <a class="oe-card" href="infraestructura.html">
+        <h2>Infraestructura</h2>
+        <p>SAM, <code>template.yaml</code>, <code>samconfig.toml</code>, Lambda privada, EFS y mensajería.</p>
+      </a>
+    </nav>
+
+    <div class="oe-callout" style="margin-top: 2.5rem;">
+      <strong style="color: var(--oe-text);">Nota sobre versiones.</strong>
+      Esta carpeta es la wiki alineada a la definición actual del producto. La documentación histórica (páginas detalladas previas) permanece en <code>wiki-actual/</code> sin borrado. El portal en la raíz del repositorio enlaza ambas y el reporte de auditoría.
+    </div>
+
+    <footer class="oe-footer">
+      <a href="../index.html">← Portal maestro del repositorio</a>
+      ·
+      <span>Actualizado <time datetime="2026-03-29">marzo 2026</time></span>
+    </footer>
+  </div>
+</body>
+</html>

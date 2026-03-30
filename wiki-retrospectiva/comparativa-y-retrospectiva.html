@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Comparativa y retrospectiva — Wiki vs nueva definición</title>
+  <link href="reporte-estilos.css" rel="stylesheet">
+</head>
+<body class="reporte-doc">
+  <nav class="reporte-nav" aria-label="Navegación del reporte documental">
+    <div class="reporte-nav-inner">
+      <div class="reporte-nav-brand">
+        Reporte documental — tld-validador-proxy
+        <small>Auditoría de sistemas y QA documental</small>
+      </div>
+      <div class="reporte-nav-links">
+        <a href="estudio-wiki-actual.html">1. Wiki actual</a>
+        <a href="estudio-nueva-definicion.html">2. Nueva definición</a>
+        <a href="comparativa-y-retrospectiva.html" aria-current="page">3. Comparativa</a>
+        <a href="../index.html">Portal maestro</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="reporte-wrap">
+    <header class="reporte-header">
+      <h1>Comparativa y retrospectiva crítica</h1>
+      <p class="reporte-meta">
+        Contraste entre el estado documentado en <code>tld-validador-proxy-wiki</code> y la «Definición del Proyecto» normativa. <time datetime="2026-03-29">29 de marzo de 2026</time>.
+      </p>
+    </header>
+
+    <section class="reporte-section">
+      <h2>1. Coincidencias (alineación fuerte)</h2>
+      <div class="reporte-table-wrap">
+        <table class="reporte-table">
+          <thead>
+            <tr>
+              <th scope="col">Tema</th>
+              <th scope="col">Evidencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Sin API Gateway; Invoke SDK</td>
+              <td>La wiki lo declara en <code>flow.html</code>, <code>index.html</code> e <code>infrastructure.html</code>. La definición lo exige.</td>
+            </tr>
+            <tr>
+              <td>mTLS, EFS, CRL, data-driven</td>
+              <td><code>connectivity-telered.html</code>, <code>crypto-transport.html</code>, <code>infrastructure.html</code>, <code>data-dictionary.html</code> cubren montaje <code>/mnt/tld-llaves</code>, tablas de canal/llave, CRL y política de reintentos desde DynamoDB.</td>
+            </tr>
+            <tr>
+              <td><code>tld-validador-canal</code> / <code>tld-validador-canal-operacion</code></td>
+              <td>La wiki documenta <code>urlOperacion</code> (u homólogos), <code>retryPolicyActive</code>, <code>operationTimeoutMs</code> en el diccionario — alineado al apartado 4 de la definición.</td>
+            </tr>
+            <tr>
+              <td>Dos capas de resiliencia (síncrona + SQS)</td>
+              <td><code>resilience-strategy.html</code> + <code>async-worker.html</code> describen Capa 1 y Capa 2 de forma coherente con la «propuesta de dos capas» de la definición.</td>
+            </tr>
+            <tr>
+              <td>Un solo <code>httpsClient.js</code> + Axios</td>
+              <td>La wiki lo repite en varias páginas; la definición lo exige.</td>
+            </tr>
+            <tr>
+              <td>Lambda Layers y SAM</td>
+              <td><code>project-structure.html</code> e <code>infrastructure.html</code> describen <code>lambdas/layer/nodejs/</code>, <code>template.yaml</code>, <code>samconfig.toml</code>.</td>
+            </tr>
+            <tr>
+              <td>Wiki como fase de preparación</td>
+              <td>La existencia misma de la wiki cumple el espíritu del punto de «documentación centralizada» antes del código de producción.</td>
+            </tr>
+            <tr>
+              <td>Satélites y legado</td>
+              <td>La wiki menciona <code>tld-api-alias</code>, <code>tld-api-p2m</code>, <code>tld-notificacion</code>, <code>tld-api-cuenta-nombre</code>, <code>tld-util</code> en distintos documentos — solapamiento sustancial con la lista de la definición (salvo matices abajo).</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="reporte-section">
+      <h2>2. Brechas (gaps) — lo que falta o no está explícito en la wiki respecto al estándar nuevo</h2>
+      <ul>
+        <li><strong>Sustitución explícita de <code>tld-api-r2p</code>:</strong> la definición lo nombra; la wiki no lo promueve con la misma visibilidad en la página de inicio. Conviene una mención canónica en <code>index.html</code> o <code>business-value.html</code> si el alcance es real.</li>
+        <li><strong>«Propuesta principal» = SQS + worker:</strong> la definición prioriza el modelo asíncrono como base; la wiki presenta Capa 1 (síncrona) con igual riqueza narrativa y filosofía «opt-in». Falta un párrafo de <strong>governance</strong> que diga cuál es el camino por defecto aprobado por producto.</li>
+        <li><strong>Salida de <code>tld-notificacion</code>:</strong> la definición lo plantea como evolución explícita; la wiki habla de absorber patrones de resiliencia pero no fija un <strong>criterio de desmantelamiento</strong> o hito por repositorio.</li>
+        <li><strong>Árbol de directorios con <code>app.js</code> y carpetas <code>tld-validador-proxy-reintento/</code>:</strong> la wiki estandariza <code>orchestrator.js</code> / <code>worker.js</code> bajo <code>lambdas/proxy/</code>. No hay página que reconcilie los dos esquemas.</li>
+        <li><strong>Punto de entrada <code>handler.js</code>:</strong> la definición lo lista; la wiki usa <code>orchestrator.lambdaHandler</code> en plantilla SAM. Es una brecha de nomenclatura, no necesariamente de arquitectura.</li>
+        <li><strong>Inactividad y <code>tld-api-alias</code>:</strong> la definición acota un uso (inactividad); la wiki a veces cita «alias» en general. Un glosario de <strong>qué flujo de alias migra primero</strong> reduciría ambigüedad.</li>
+      </ul>
+    </section>
+
+    <section class="reporte-section">
+      <h2>3. Incoherencias críticas (riesgo de confusión o documentación obsoleta)</h2>
+      <div class="reporte-callout reporte-callout--danger">
+        <strong>Crítico — nomenclatura de estructura de repo:</strong> La «Definición del Proyecto» propone <code>lambdas/tld-validador-proxy/app.js</code> y <code>lambdas/tld-validador-proxy-reintento/app.js</code>. La wiki documenta <code>lambdas/proxy/orchestrator.js</code> + <code>worker.js</code> con un solo <code>CodeUri</code>. Un desarrollador que implemente exactamente el árbol del charter <strong>no</strong> coincidirá con la wiki actual sin ADR. Esto es la mayor fuente de conflicto documental.
+      </div>
+      <div class="reporte-callout reporte-callout--warning">
+        <strong>Alto — prioridad de capas:</strong> Si la organización adopta la definición al pie de la letra, el «modelo de una capa» asíncrono es la base; la wiki educa fuertemente en Capa 1 síncrona (reintentos en caliente, presupuesto Lambda). Sin una decisión explícita, dos equipos pueden implementar prioridades distintas.
+      </div>
+      <div class="reporte-callout reporte-callout--warning">
+        <strong>Medio — lista de repos a sustituir:</strong> El charter incluye <code>tld-util</code> y <code>tld-api-r2p</code> de forma explícita; la wiki los menciona en contextos de legado o valor, pero no en un único «perímetro de consolidación».
+      </div>
+    </section>
+
+    <section class="reporte-section">
+      <h2>4. Matriz resumida brecha ↔ documento wiki sugerido para remediar</h2>
+      <div class="reporte-table-wrap">
+        <table class="reporte-table">
+          <thead>
+            <tr>
+              <th scope="col">Brecha</th>
+              <th scope="col">Dónde actualizar (si el equipo decide alinear)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Árbol <code>app.js</code> vs <code>orchestrator.js</code></td>
+              <td><code>project-structure.html</code>, <code>flow.html</code>, snippet en <code>infrastructure.html</code></td>
+            </tr>
+            <tr>
+              <td>Prioridad async vs sync</td>
+              <td><code>index.html</code>, <code>resilience-strategy.html</code> (párrafo de producto por defecto)</td>
+            </tr>
+            <tr>
+              <td>Alcance <code>tld-api-r2p</code> / <code>tld-util</code></td>
+              <td><code>business-value.html</code> o nueva sección «Perímetro de consolidación»</td>
+            </tr>
+            <tr>
+              <td>Exit strategy <code>tld-notificacion</code></td>
+              <td><code>async-worker.html</code> + enlace a roadmap</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="reporte-section reporte-role-box">
+      <h2>5. Opinión técnica sincera (rol Tech Lead)</h2>
+      <p>La wiki <strong>no</strong> está «totalmente incoherente» con la nueva definición: en los ejes de seguridad (EFS, mTLS, CRL, DynamoDB), conectividad (Invoke), y modelo de datos operativo, la alineación es <strong>sólida</strong>. El problema es que el charter introduce <strong>decisiones de empaquetado y prioridad de capas</strong> que la wiki había resuelto de otra forma (nombres de carpetas, handlers, énfasis en Capa 1). Eso no es cosmético: en organizaciones grandes, esas discrepancias generan PRs duplicados, plantillas SAM incorrectas y discusiones de CI/CD.</p>
+      <p><strong>Qué le diría a quien venga a cambiar la wiki sin contexto:</strong></p>
+      <ol>
+        <li><strong>No borren el trabajo previo</strong> — la wiki tiene valor (diagramas, diccionario, matriz de errores, IAM). Traten los cambios como <strong>evolución versionada</strong>: si el charter manda <code>app.js</code>, añadan una subsección «Convención de nomenclatura 2026» y, si aplica, marquen <code>orchestrator.js</code> como alias o fase anterior.</li>
+        <li><strong>Un solo lugar de verdad para el árbol de directorios</strong> — hoy hay tensión entre charter y <code>project-structure.html</code>. Elijan una fuente y reflejen la otra como «alternativa histórica» o actualicen el charter; no dejen ambas como iguales.</li>
+        <li><strong>Expliciten el producto por defecto</strong> — si la organización quiere SQS+worker como «primera clase», el lector de <code>resilience-strategy.html</code> debe verlo en el primer pantallazo; no solo al final del capítulo.</li>
+        <li><strong>La definición de «inactividad» en <code>tld-api-alias</code></strong> es útil para PM y auditoría; incorpórenla al diccionario o al flujo para evitar que «alias» siga siendo un saco sin fondo.</li>
+        <li><strong>Honestidad sobre <code>tld-notificacion</code>:</strong> migrar reintentos sin plan de desuso del repo es duplicar coste operativo. La wiki debería documentar el estado deseado (single writer de política de reintentos) o quedar como aspiracional.</li>
+        <li><strong>QA documental:</strong> antes de cerrar un sprint, ejecuten un checklist: ¿Invoke sin API GW? ¿<code>httpsClient</code> único? ¿DynamoDB con timeouts por operación? ¿EFS read-only donde corresponde? Esa lista cruza charter y wiki sin favorecer a uno solo.</li>
+      </ol>
+      <p><strong>Veredicto:</strong> La wiki es un activo maduro en el centro del problema (seguridad, datos, resiliencia). La nueva definición es un <strong>ajuste de dirección de producto y de convención de repo</strong>. La divergencia principal es <strong>nomenclatura y prioridad de capas</strong>, no el modelo mental de «proxy centralizado». Resuelvan eso con un ADR y una pasada de edición coordinada; no con parches aislados en una sola página.</p>
+    </section>
+
+    <footer class="reporte-footer">
+      Documentos relacionados: <a href="estudio-wiki-actual.html">estudio-wiki-actual.html</a> · <a href="estudio-nueva-definicion.html">estudio-nueva-definicion.html</a>. Estilos: <code>reporte-estilos.css</code>.
+    </footer>
+  </div>
+</body>
+</html>

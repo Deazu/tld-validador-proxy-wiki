@@ -1,0 +1,315 @@
+/**
+ * Estilos del reporte documental — Auditoría / QA documental
+ * tld-validador-proxy-wiki (raíz del repositorio)
+ */
+
+:root {
+  --rep-bg: #f4f6f9;
+  --rep-surface: #ffffff;
+  --rep-text: #1a1d26;
+  --rep-muted: #5c6370;
+  --rep-accent: #0d47a1;
+  --rep-accent-soft: #e3f2fd;
+  --rep-border: #d8dee9;
+  --rep-success: #1b5e20;
+  --rep-warning: #e65100;
+  --rep-danger: #b71c1c;
+  --rep-font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --rep-mono: ui-monospace, "Cascadia Code", "Consolas", monospace;
+  --rep-radius: 10px;
+  --rep-shadow: 0 2px 12px rgba(26, 29, 38, 0.08);
+  --rep-max: 52rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body.reporte-doc {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--rep-font);
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--rep-text);
+  background: var(--rep-bg);
+}
+
+/* Barra de navegación entre reportes */
+.reporte-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%);
+  color: #fff;
+  box-shadow: 0 2px 16px rgba(13, 71, 161, 0.35);
+}
+
+.reporte-nav-inner {
+  max-width: calc(var(--rep-max) + 4rem);
+  margin: 0 auto;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.reporte-nav-brand {
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.reporte-nav-brand small {
+  display: block;
+  font-weight: 400;
+  opacity: 0.88;
+  font-size: 0.75rem;
+  margin-top: 0.15rem;
+}
+
+.reporte-nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+}
+
+.reporte-nav-links a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.875rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.reporte-nav-links a:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.reporte-nav-links a[aria-current="page"] {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--rep-accent);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+/* Contenedor principal */
+.reporte-wrap {
+  max-width: var(--rep-max);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3.5rem;
+}
+
+.reporte-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 2px solid var(--rep-border);
+}
+
+.reporte-header h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--rep-text);
+  line-height: 1.25;
+}
+
+.reporte-meta {
+  font-size: 0.875rem;
+  color: var(--rep-muted);
+}
+
+.reporte-meta time {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Secciones */
+.reporte-section {
+  margin-bottom: 2.25rem;
+}
+
+.reporte-section h2 {
+  margin: 0 0 0.85rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--rep-accent);
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--rep-border);
+}
+
+.reporte-section h3 {
+  margin: 1.35rem 0 0.6rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--rep-text);
+}
+
+.reporte-section p {
+  margin: 0 0 0.85rem;
+}
+
+.reporte-section ul,
+.reporte-section ol {
+  margin: 0 0 0.85rem;
+  padding-left: 1.35rem;
+}
+
+.reporte-section li {
+  margin-bottom: 0.35rem;
+}
+
+.reporte-section li::marker {
+  color: var(--rep-muted);
+}
+
+/* Código y rutas */
+code,
+.reporte-code {
+  font-family: var(--rep-mono);
+  font-size: 0.9em;
+  background: #eceff4;
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+  color: #2e3440;
+}
+
+pre.reporte-pre {
+  font-family: var(--rep-mono);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  background: #2e3440;
+  color: #eceff4;
+  padding: 1rem 1.15rem;
+  border-radius: var(--rep-radius);
+  overflow-x: auto;
+  margin: 0.75rem 0 1rem;
+  box-shadow: var(--rep-shadow);
+}
+
+/* Cajas de estado */
+.reporte-callout {
+  border-radius: var(--rep-radius);
+  padding: 1rem 1.15rem;
+  margin: 1rem 0;
+  border-left: 4px solid var(--rep-border);
+  background: var(--rep-surface);
+  box-shadow: var(--rep-shadow);
+}
+
+.reporte-callout--info {
+  border-left-color: var(--rep-accent);
+  background: var(--rep-accent-soft);
+}
+
+.reporte-callout--success {
+  border-left-color: var(--rep-success);
+  background: #e8f5e9;
+}
+
+.reporte-callout--warning {
+  border-left-color: var(--rep-warning);
+  background: #fff3e0;
+}
+
+.reporte-callout--danger {
+  border-left-color: var(--rep-danger);
+  background: #ffebee;
+}
+
+.reporte-callout strong:first-child {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
+}
+
+/* Tablas */
+.reporte-table-wrap {
+  overflow-x: auto;
+  margin: 0.75rem 0 1rem;
+  border-radius: var(--rep-radius);
+  border: 1px solid var(--rep-border);
+  background: var(--rep-surface);
+  box-shadow: var(--rep-shadow);
+}
+
+table.reporte-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+table.reporte-table th,
+table.reporte-table td {
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rep-border);
+}
+
+table.reporte-table th {
+  background: #eceff4;
+  font-weight: 600;
+  color: var(--rep-text);
+}
+
+table.reporte-table tr:last-child td {
+  border-bottom: none;
+}
+
+table.reporte-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* Rol Tech Lead */
+.reporte-role-box {
+  margin-top: 2rem;
+  padding: 1.25rem 1.35rem;
+  background: linear-gradient(145deg, #e8eaf6 0%, #f5f5f5 100%);
+  border: 1px solid #c5cae9;
+  border-radius: var(--rep-radius);
+}
+
+.reporte-role-box h2 {
+  margin-top: 0;
+  border: none;
+  padding: 0;
+  color: #283593;
+}
+
+.reporte-footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rep-border);
+  font-size: 0.8125rem;
+  color: var(--rep-muted);
+}
+
+@media (max-width: 576px) {
+  .reporte-nav-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reporte-nav-links {
+    justify-content: flex-start;
+  }
+
+  .reporte-header h1 {
+    font-size: 1.35rem;
+  }
+}

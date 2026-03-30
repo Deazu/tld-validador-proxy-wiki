@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estudio exhaustivo — Wiki tld-validador-proxy (estado actual)</title>
+  <link href="reporte-estilos.css" rel="stylesheet">
+</head>
+<body class="reporte-doc">
+  <nav class="reporte-nav" aria-label="Navegación del reporte documental">
+    <div class="reporte-nav-inner">
+      <div class="reporte-nav-brand">
+        Reporte documental — tld-validador-proxy
+        <small>Auditoría de sistemas y QA documental</small>
+      </div>
+      <div class="reporte-nav-links">
+        <a href="estudio-wiki-actual.html" aria-current="page">1. Wiki actual</a>
+        <a href="estudio-nueva-definicion.html">2. Nueva definición</a>
+        <a href="comparativa-y-retrospectiva.html">3. Comparativa</a>
+        <a href="../index.html">Portal maestro</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="reporte-wrap">
+    <header class="reporte-header">
+      <h1>Estudio exhaustivo de la carpeta <code>tld-validador-proxy-wiki</code></h1>
+      <p class="reporte-meta">
+        Documento generado para auditoría documental. Alcance: archivos HTML, CSS y JS de la wiki (excluye <code>.git</code> y scripts auxiliares salvo mención). <time datetime="2026-03-29">29 de marzo de 2026</time>.
+      </p>
+    </header>
+
+    <section class="reporte-section">
+      <h2>1. Inventario de artefactos</h2>
+      <p>La wiki está compuesta principalmente por <strong>páginas HTML estáticas</strong> enlazadas entre sí, con <strong>Bootstrap 5.3.3</strong> y <code>css/wiki.css</code> para la apariencia del portal, y scripts JS para inyección de navegación lateral, sincronización de menú e inicialización de diagramas Mermaid.</p>
+      <div class="reporte-table-wrap">
+        <table class="reporte-table">
+          <thead>
+            <tr>
+              <th scope="col">Categoría</th>
+              <th scope="col">Archivos relevantes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Páginas de contenido</td>
+              <td><code>index.html</code>, <code>flow.html</code>, <code>business-value.html</code>, <code>resilience-strategy.html</code>, <code>async-worker.html</code>, <code>resilience-config.html</code>, <code>data-dictionary.html</code>, <code>identity.html</code>, <code>logger.html</code>, <code>crypto-transport.html</code>, <code>crypto-app.html</code>, <code>connectivity-telered.html</code>, <code>network.html</code>, <code>deployment.html</code>, <code>infrastructure.html</code>, <code>project-structure.html</code></td>
+            </tr>
+            <tr>
+              <td>Estilos y JS compartidos</td>
+              <td><code>css/wiki.css</code>, <code>js/wiki-init.js</code>, <code>js/wiki-nav-inject.js</code>, <code>js/menu-sync.js</code>, <code>js/wiki-chrome.js</code></td>
+            </tr>
+            <tr>
+              <td>Utilidades de mantenimiento</td>
+              <td><code>scripts/fix-wiki-indent.cjs</code>, <code>scripts/patch-wiki-sidebar.cjs</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="reporte-section">
+      <h2>2. Función de la wiki según su contenido (mapa temático)</h2>
+      <h3>2.1. Misión y valor de negocio</h3>
+      <p><code>index.html</code> y <code>business-value.html</code> posicionan el proxy como <strong>único punto de salida controlado</strong> hacia validadores, con énfasis en cifrado híbrido, TLS/mTLS, CRL, telemetría y comparación con legado (<code>tld-util</code>, bifurcación axios/CA Telered, etc.).</p>
+      <h3>2.2. Flujo de ejecución y contrato de invocación</h3>
+      <p><code>flow.html</code> describe el ciclo <strong>Consumer → AWS SDK Invoke → Orquestador</strong>, pseudo-flujo del handler, integración con logger sanitizado, DynamoDB, cifrado y cliente HTTP seguro. Incluye diagramas Mermaid para reintentos, modo asíncrono con semántica <code>202</code> en el payload de retorno, y referencia a <code>orchestrator.js</code> (no <code>handler.js</code>).</p>
+      <h3>2.3. Resiliencia en dos capas documentadas</h3>
+      <p><code>resilience-strategy.html</code> define la <strong>Capa 1 (síncrona)</strong>: reintentos <em>opt-in</em> gobernados por DynamoDB (<code>retryPolicyActive</code>, políticas en <code>tld-validador-canal-operacion</code>), uso de <code>httpsClient</code> con Axios e interceptores, presupuesto temporal con <code>getRemainingTimeInMillis</code>, y telemetría con <code>correlationId</code>.</p>
+      <p><code>async-worker.html</code> define la <strong>Capa 2 (asíncrona)</strong>: SQS + worker Lambda, mismo <code>httpsClient.js</code>, backoff, prohibición de ping-pong entre Lambdas, payload lógico tipo <code>202</code> tras encolar.</p>
+      <p><code>resilience-config.html</code> complementa con configuración operativa en DynamoDB.</p>
+      <h3>2.4. Seguridad de transporte y PKI</h3>
+      <p><code>connectivity-telered.html</code>, <code>crypto-transport.html</code> y <code>crypto-app.html</code> cubren perfiles TLS/mTLS, EFS, CRL, variables de entorno, resolución de llaves (<code>tld-validador-canal</code> / <code>tld-validador-canal-llave</code>, atributo <code>archivo</code>), <code>resolverRutaSegura</code>, Secrets Manager para passphrase, y cifrado de aplicación.</p>
+      <h3>2.5. Modelo de datos</h3>
+      <p><code>data-dictionary.html</code> documenta tablas <code>tld-validador-canal</code>, <code>tld-validador-canal-llave</code>, <code>tld-validador-canal-operacion</code> (fuente de verdad para resiliencia y timeouts), telemetría <code>tld-validador-proxy-telemetry</code>, matriz <code>PROXY_ERR_*</code>, y jerarquía bajo <code>/mnt/tld-llaves/</code>.</p>
+      <h3>2.6. Identidad y canal</h3>
+      <p><code>identity.html</code> contrasta legado (<code>canal.js</code> en satélites) con el proxy autónomo, propone <code>IdentityManager</code>, <code>getCanal</code>, y eventos de ejemplo.</p>
+      <h3>2.7. Observabilidad</h3>
+      <p><code>logger.html</code> especifica diseño de <code>logger.js</code> con sanitización, <code>DENY_KEYS</code>, <code>PRINT_LOGS</code>, alineado a buenas prácticas de no filtrar secretos.</p>
+      <h3>2.8. Infraestructura y despliegue</h3>
+      <p><code>infrastructure.html</code> presenta un <code>template.yaml</code> de referencia: Lambdas privadas <code>ProxyApiFunction</code> / <code>ProxyWorkerFunction</code>, EFS con <code>LocalMountPath: /mnt/tld-llaves</code>, política de solo lectura documentada como objetivo, colas SQS/DLQ, IAM DynamoDB, sección de gestión de secretos (passphrase). <code>deployment.html</code> y <code>network.html</code> cubren despliegue mínimo y <code>samconfig.toml</code>.</p>
+      <h3>2.9. Estructura de repositorio prevista</h3>
+      <p><code>project-structure.html</code> fija el árbol <code>lambdas/proxy/</code> con <code>orchestrator.js</code>, <code>worker.js</code>, <code>lib/httpsClient.js</code>, <code>lambdas/layer/nodejs/</code>, <code>template.yaml</code>, <code>samconfig.toml</code> — alineado a <code>tld-notificacion</code> y <code>tld-api-p2m</code>.</p>
+    </section>
+
+    <section class="reporte-section">
+      <h2>3. Principios transversales detectados en la documentación</h2>
+      <ul>
+        <li><strong>Sin API Gateway en el borde del proxy:</strong> acceso vía <code>lambda:InvokeFunction</code> (patrón institucional tipo <code>tld-matriz-control-plan</code>).</li>
+        <li><strong>Data-driven:</strong> timeouts y reintentos desde DynamoDB, no solo variables de entorno globales.</li>
+        <li><strong>Un solo motor HTTP saliente:</strong> <code>httpsClient.js</code> + Axios según varias páginas.</li>
+        <li><strong>Resiliencia opt-in:</strong> nada de reintentos automáticos sin configuración explícita en tabla.</li>
+        <li><strong>Referencias a satélites:</strong> <code>tld-api-alias</code>, <code>tld-api-p2m</code>, Lambda <code>inactividad</code>, <code>tld-api-cuenta-nombre</code>, <code>tld-notificacion</code>, en distintos documentos — sin una lista canónica única en la portada.</li>
+      </ul>
+    </section>
+
+    <section class="reporte-section reporte-role-box">
+      <h2>Análisis de rol — Tech Lead: función actual de <code>tld-validador-proxy-wiki</code></h2>
+      <p>La carpeta cumple hoy la función de <strong>repositorio de conocimiento de ingeniería (engineering wiki)</strong> para el producto <code>tld-validador-proxy</code>: no es el código fuente del servicio, sino el <strong>contrato intencional</strong> entre arquitectura, seguridad, datos e implementación. Concentra decisiones de diseño (transporte, resiliencia en dos capas, diccionario DynamoDB, SAM/EFS), diagramas y enlaces cruzados, y sirve como <strong>guía de implementación y revisión</strong> antes y durante el desarrollo.</p>
+      <p>Su valor es máximo cuando se trata como <strong>fuente de verdad documental</strong> versionada en Git: cualquier desviación del código respecto a estos documentos debe ser consciente (ADR o actualización de la wiki). Si no se mantiene al día, se convierte en riesgo operativo (expectativas falsas sobre handlers, rutas o políticas IAM).</p>
+    </section>
+
+    <footer class="reporte-footer">
+      Referencias internas de la wiki: <code>index.html</code>, <code>flow.html</code>, <code>project-structure.html</code>, <code>data-dictionary.html</code>, <code>infrastructure.html</code>, <code>resilience-strategy.html</code>, <code>async-worker.html</code>.
+    </footer>
+  </div>
+</body>
+</html>

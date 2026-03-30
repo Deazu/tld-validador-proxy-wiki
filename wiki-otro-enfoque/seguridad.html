@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seguridad — tld-validador-proxy</title>
+  <link href="index.css" rel="stylesheet">
+</head>
+<body class="oe-wiki">
+  <header class="oe-nav">
+    <div class="oe-nav-inner">
+      <div class="oe-brand"><code>tld-validador-proxy</code></div>
+      <nav class="oe-nav-links" aria-label="Secciones">
+        <a href="index.html">Inicio</a>
+        <a href="arquitectura.html">Arquitectura</a>
+        <a href="seguridad.html" aria-current="page">Seguridad</a>
+        <a href="datos.html">Datos</a>
+        <a href="infraestructura.html">Infraestructura</a>
+        <a href="../index.html">Portal maestro</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="oe-wrap oe-article">
+    <a class="oe-back" href="index.html">← Inicio</a>
+    <h1>Seguridad y transporte</h1>
+
+    <h2>1. Amazon EFS — punto de lectura único</h2>
+    <p>El material PKI (CA, certificados de cliente, CRL) reside en volumen EFS montado en <code>/mnt/tld-llaves</code>. La postura objetivo es <strong>solo lectura</strong> para las funciones del proxy: Access Point, permisos POSIX e IAM deben converger en que la Lambda no necesite escribir en el volumen de claves.</p>
+
+    <h2>2. Resolución dinámica de llaves (data-driven)</h2>
+    <p>No se codifican rutas absolutas de certificados en el código de negocio. El flujo canónico es:</p>
+    <ol>
+      <li>Obtener <code>idLlave</code> (u homólogo) desde <code>tld-validador-canal</code>.</li>
+      <li>Leer el ítem en <code>tld-validador-canal-llave</code> y el atributo <code>archivo</code>.</li>
+      <li>Construir la ruta bajo <code>/mnt/tld-llaves/</code> + <code>archivo</code> en <code>httpsClient.js</code>.</li>
+    </ol>
+    <p>El código debe implementar <code>resolverRutaSegura</code> (o equivalente) para garantizar que la ruta normalizada permanece estrictamente bajo el prefijo del montaje, evitando path traversal.</p>
+
+    <h2>3. mTLS y CRL</h2>
+    <p>Donde el canal exija identidad de cliente, el <code>https.Agent</code> se construye con buffers <code>cert</code>, <code>key</code> y <code>ca</code> leídos desde EFS. La <strong>lista de revocación (CRL)</strong> se consume según la ruta configurada en <code>LIB_RUTA_ARCHIVO_CRL</code> (típicamente bajo <code>/mnt/tld-llaves/.../crltelered.crl</code>) para validar el estado de revocación antes de tratar el cuerpo de aplicación como seguro.</p>
+
+    <h2>4. Passphrase y secretos</h2>
+    <p>Si las claves privadas requieren passphrase, ésta se obtiene de <strong>AWS Secrets Manager</strong> referenciada por convención (p. ej. usando <code>idLlave</code>), nunca en texto plano en DynamoDB ni en variables de entorno de la función.</p>
+
+    <h2>5. Cifrado de aplicación</h2>
+    <p>El sobre híbrido hacia el validador (RSA/KMS + AES) sigue las llaves y algoritmos resueltos desde el ítem de canal; este wiki no sustituye al detalle de implementación criptográfica documentado en la versión histórica (<code>wiki-actual/crypto-app.html</code>) cuando se requiera profundidad adicional.</p>
+
+    <footer class="oe-footer"><a href="index.html">← Inicio</a></footer>
+  </div>
+</body>
+</html>

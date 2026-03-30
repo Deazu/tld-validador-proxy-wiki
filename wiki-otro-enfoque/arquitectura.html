@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arquitectura — tld-validador-proxy</title>
+  <link href="index.css" rel="stylesheet">
+</head>
+<body class="oe-wiki">
+  <header class="oe-nav">
+    <div class="oe-nav-inner">
+      <div class="oe-brand"><code>tld-validador-proxy</code></div>
+      <nav class="oe-nav-links" aria-label="Secciones">
+        <a href="index.html">Inicio</a>
+        <a href="arquitectura.html" aria-current="page">Arquitectura</a>
+        <a href="seguridad.html">Seguridad</a>
+        <a href="datos.html">Datos</a>
+        <a href="infraestructura.html">Infraestructura</a>
+        <a href="../index.html">Portal maestro</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="oe-wrap oe-article">
+    <a class="oe-back" href="index.html">← Inicio</a>
+    <h1>Arquitectura</h1>
+
+    <h2>1. Identidad y alcance</h2>
+    <p>El servicio concentra las salidas HTTPS hacia los validadores bancarios y absorbe capacidades hoy repartidas en varios repositorios. Referencia explícita de consolidación: <code>tld-api-alias</code> (flujos de inactividad), <code>tld-api-cuenta-nombre</code>, <code>tld-api-p2m</code>, <code>tld-api-r2p</code>, <code>tld-notificacion</code> y utilidades en <code>tld-util</code>. Objetivos transversales: <strong>mTLS</strong> homogéneo y <strong>reintentos</strong> gobernados por datos, migrando la lógica de resiliencia asociada a <code>tld-notificacion</code> hacia este proxy cuando corresponda al roadmap.</p>
+
+    <h2>2. Borde de consumo</h2>
+    <p>Los microservicios consumidores invocan la función del proxy con el <strong>SDK de AWS</strong> (<code>lambda:InvokeFunction</code>) usando el ARN o el nombre estable de la Lambda. No existe exposición HTTP de entrada gestionada por este producto para el tráfico de negocio hacia el validador.</p>
+
+    <h2>3. Modelo por defecto: asíncrono (SQS + worker)</h2>
+    <p>La línea base de despliegue prioriza el <strong>desacople temporal</strong>: el componente de entrada valida, resuelve canal desde DynamoDB, prepara el trabajo y lo publica en <strong>Amazon SQS</strong>. Una segunda función Lambda (<strong>worker de reintento / procesamiento</strong>) consume la cola, ejecuta la llamada saliente con el mismo cliente TLS y aplica backoff según política. Así se alinea el SLA percibido del llamador con la duración real del downstream bancario.</p>
+    <p>El retorno de la invocación al proxy puede materializar una aceptación lógica equivalente a “202” en el cuerpo JSON de respuesta de Lambda cuando el encolado fue duradero, sin implicar acuse del banco.</p>
+
+    <h2>4. Capa síncrona (opt-in)</h2>
+    <p>Cuando la operación y DynamoDB lo permiten, el mismo binario de orquestación puede ejecutar uno o más intentos HTTP en la misma invocación antes de declarar fallo o delegar a cola. Esta capacidad es <strong>complementaria</strong>, no sustituto del modelo asíncrono por defecto donde el equipo haya fijado prioridad de producto en SQS.</p>
+
+    <h2>5. Estructura de repositorio (convención vigente)</h2>
+    <pre class="oe-pre">tld-validador-proxy/
+├── lambdas/
+│   ├── tld-validador-proxy/          # Orquestador — punto de entrada Invoke
+│   │   ├── app.js
+│   │   └── lib/
+│   │       └── httpsClient.js        # Único motor TLS + Axios hacia el validador
+│   ├── tld-validador-proxy-reintento/ # Worker — evento SQS
+│   │   ├── app.js
+│   │   └── lib/                      # Misma disciplina de transporte (sin bifurcar stack HTTP)
+│   └── layer/
+│       └── nodejs/
+│           └── package.json          # @aws-sdk/*, axios, dependencias compartidas
+├── template.yaml
+└── samconfig.toml</pre>
+
+    <div class="oe-callout">
+      <strong>Punto único de salida HTTP.</strong> Toda negociación TLS/mTLS y peticiones salientes vía Axios deben concentrarse en <code>httpsClient.js</code> (o módulo equivalente único referenciado por ambas funciones), reutilizando el mismo criterio de CRL, agentes y timeouts.
+    </div>
+
+    <h2>6. Fase previa: documentación</h2>
+    <p>La wiki y los ADR preceden o acompañan el código; la plantilla SAM y <code>samconfig.toml</code> se alinean a repositorios estables de la organización para reducir sorpresas en CI/CD.</p>
+
+    <footer class="oe-footer"><a href="index.html">← Inicio</a></footer>
+  </div>
+</body>
+</html>
