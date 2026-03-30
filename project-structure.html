@@ -55,13 +55,14 @@
 
         <h1 class="h2 mb-2">Estructura del repositorio <code>tld-validador-proxy</code></h1>
         <p class="lead text-muted mb-3">
-          <strong>Un único repositorio</strong> alinea aplicación e infraestructura SAM con el estándar de servicios como <code>tld-notificacion</code> y <code>tld-api-p2m</code>: carpeta <code>lambdas/layer</code> para dependencias Node, <code>CodeUri</code> bajo <code>lambdas/proxy</code> con <code>lib/</code> colateral, y <strong>sin API Gateway</strong> — el borde productivo es <strong>invocación directa</strong> (<code>lambda:InvokeFunction</code>), con opción de <strong>Capa 2</strong> vía SQS + worker. Así el proyecto se reconoce como servicio interno de alta resiliencia y baja latencia de red de entrada.
+          <strong>Un único repositorio</strong> alinea aplicación e infraestructura SAM con el estándar de servicios como <code>tld-notificacion</code> y <code>tld-api-p2m</code>: <code>lambdas/layer/nodejs/</code> para dependencias Node, <code>lambdas/proxy/</code> como <code>CodeUri</code> único con handlers y <code>lib/</code>. El borde productivo es <strong>ARN del Proxy</strong> / <strong>nombre de la función</strong> + <code>lambda:InvokeFunction</code>, con <strong>Capa 2</strong> vía SQS + worker. Servicio interno de alta resiliencia y baja latencia en el camino de invocación.
         </p>
 
         <nav class="wiki-inpage-toc small mb-4" aria-label="En esta página">
           <div class="fw-semibold mb-2">En esta página</div>
           <ul class="mb-0">
             <li><a href="#arbol-directorios">Árbol de directorios</a></li>
+            <li><a href="#httpsclient-unico">Motor único mTLS (<code>httpsClient.js</code>)</a></li>
             <li><a href="#especificaciones-diseno">Especificaciones de diseño</a></li>
             <li><a href="#resiliencia-lib">Lógica de resiliencia (<code>resilience.js</code>)</a></li>
             <li><a href="#relacion-plantilla">Relación con <code>template.yaml</code></a></li>
@@ -79,23 +80,30 @@
 │   ├── proxy/              # Directorio principal (CodeUri)
 │   │   ├── orchestrator.js # Handler: invocación síncrona (Capa 1)
 │   │   ├── worker.js       # Handler: trigger SQS (Capa 2)
-│   │   └── lib/            # Lógica compartida (httpsClient, dynamoDB, resilience, …)
+│   │   └── lib/            # Lógica compartida: httpsClient.js (mTLS), dynamoDB, resilience, …
 │   └── layer/              # Capa de dependencias (node_modules)
 │       └── nodejs/
 │           └── package.json
-├── template.yaml           # 2 funciones, cola SQS, DLQ (sin API Gateway)
+├── template.yaml           # 2 Lambdas privadas (mismo CodeUri), SQS, DLQ
 └── samconfig.toml          # Perfiles [dev], [sandbox], [qa], [prod] + parameter_overrides</code></pre>
           <p class="small text-muted mt-3 mb-0">
-            Los nombres de handler en SAM deben coincidir con los puntos de entrada exportados (p. ej. <code>Handler: orchestrator.lambdaHandler</code> y <code>Handler: worker.lambdaHandler</code>).
+            Los nombres de handler en SAM deben coincidir con los puntos de entrada exportados (p. ej. <code>Handler: orchestrator.lambdaHandler</code> y <code>Handler: worker.lambdaHandler</code>). Tanto el orquestador como el worker comparten el mismo <code>CodeUri: lambdas/proxy/</code> y la capa <code>lambdas/layer/nodejs/</code>, en línea con <code>tld-notificacion</code> y <code>tld-api-p2m</code>.
           </p>
         </section>
+
+        <div id="httpsclient-unico" class="alert alert-warning small mt-4 mb-0" role="alert">
+          <div class="fw-semibold mb-1">Advertencia — soberanía del transporte</div>
+          <p class="mb-0">
+            El módulo <code>lambdas/proxy/lib/httpsClient.js</code> es el <strong>motor único de mTLS</strong> (y de la pila TLS cliente hacia el banco). Cualquier cambio en certificados, CA, CRL o política de confianza del validador bancario debe concentrarse <strong>únicamente</strong> en este archivo (y en los artefactos EFS que consume) para que el impacto sea coherente en <strong>orquestador</strong> y <strong>worker</strong> sin duplicar lógica en dos handlers.
+          </p>
+        </div>
 
         <section id="especificaciones-diseno" class="mt-5">
           <h2 class="h3 border-0 pb-0">Especificaciones de diseño</h2>
 
-          <h3 class="h5 mt-4">Sin API Gateway</h3>
+          <h3 class="h5 mt-4">Función Lambda privada (sin HTTP de entrada en SAM)</h3>
           <p class="small mb-0">
-            Los satélites autorizados invocan la función de <strong>Capa 1</strong> con el SDK de AWS (<code>lambda:InvokeFunction</code>). Se reduce latencia de borde, se elimina la necesidad de <strong>VPC endpoint dedicado al API Gateway</strong> para exponer el proxy, y la superficie IAM queda explícita en el rol del llamador. Detalle operativo: <a href="infrastructure.html#invocacion-sdk">Infraestructura SAM — invocación SDK</a>.
+            Los satélites autorizados invocan la <strong>Capa 1</strong> con el SDK de AWS (<code>lambda:InvokeFunction</code>) usando el <strong>ARN del Proxy</strong> o el <strong>nombre de la función</strong>. No hay “URL del proxy” en configuración: el contrato es IAM + identificador de Lambda. Detalle operativo y <code>LambdaInvokePolicy</code> en clientes: <a href="infrastructure.html#invocacion-sdk">Infraestructura SAM — invocación SDK</a>.
           </p>
 
           <h3 class="h5 mt-4">Importación de módulos</h3>

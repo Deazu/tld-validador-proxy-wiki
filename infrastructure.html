@@ -58,7 +58,7 @@
 
         <h1 class="h2 mb-2">Infraestructura SAM — <code>template.yaml</code> del Proxy</h1>
         <p class="lead text-muted mb-3">
-          Plano <strong>AWS SAM</strong> del <code>tld-validador-proxy</code> con la <strong>misma estructura de casa</strong> que <code>tld-notificacion</code> (<code>Parameters</code> → <code>Globals</code> → <code>Conditions</code> → <code>Resources</code>), pero <strong>sin API Gateway</strong>: el borde hacia el proxy es <strong>invocación directa de Lambda</strong> (<code>lambda:InvokeFunction</code>) desde satélites en la misma cuenta (u orígenes autorizados vía IAM). Se conservan <strong>VPC, EFS</strong> y <strong>colas SQS con DLQ</strong> para la Capa 2.
+          Plano <strong>AWS SAM</strong> del <code>tld-validador-proxy</code> con la <strong>misma estructura de casa</strong> que <code>tld-notificacion</code> (<code>Parameters</code> → <code>Globals</code> → <code>Conditions</code> → <code>Resources</code>). El proxy se expone como <strong>función Lambda privada</strong> (VPC, EFS, sin recurso HTTP de entrada en la plantilla): los clientes obtienen el <strong>ARN del Proxy</strong> o el <strong>nombre estable de la función</strong> vía <code>Outputs</code> y llaman <code>lambda:InvokeFunction</code>. Se conservan <strong>colas SQS con DLQ</strong> para la Capa 2.
         </p>
 
         <nav class="wiki-inpage-toc small mb-4" aria-label="En esta página">
@@ -66,7 +66,8 @@
           <ul class="mb-0">
             <li><a href="project-structure.html">Árbol del repo y convenciones de código</a></li>
             <li><a href="#reglas-oro">Criterios de diseño (referencia estructural)</a></li>
-            <li><a href="#invocacion-sdk">Invocación directa (<code>lambda:InvokeFunction</code>)</a></li>
+            <li><a href="#lambda-privada">Función Lambda privada (soberanía del borde)</a></li>
+            <li><a href="#invocacion-sdk">Invocación directa y <code>LambdaInvokePolicy</code> en clientes</a></li>
             <li><a href="#dlq-visibility">DLQ y <code>VisibilityTimeout</code></a></li>
             <li><a href="#nombres-recursos">Nombres de recursos del proxy</a></li>
             <li><a href="#template-completo"><code>template.yaml</code> propuesto</a></li>
@@ -78,20 +79,34 @@
           <ul class="small mb-0">
             <li><strong>Orden SAM:</strong> <code>Parameters</code> (VPC, subnets, SG, timeout, EFS, rutas CA/CRL, tablas, colas), <code>Globals.Function</code> con <code>VpcConfig</code> y variables compartidas, <code>Conditions</code>, <code>Resources</code>.</li>
             <li><strong>Red y PKI:</strong> <code>VpcConfig</code> en <code>Globals</code> y <code>FileSystemConfigs</code> por función con <code>LocalMountPath: /mnt/tld-llaves</code>, igual que en el stack de notificaciones.</li>
-            <li><strong>Sin <code>AWS::Serverless::Api</code>:</strong> no hay <code>Events: Api</code> ni <code>VPCEndpointIds</code> para Gateway; la conectividad interna es SDK → Lambda.</li>
+            <li><strong>Borde soberano:</strong> solo recursos <code>AWS::Serverless::Function</code> (orquestador + worker), colas SQS y artefactos de soporte; la plantilla del proxy <strong>no define</strong> ningún recurso de API HTTP de entrada.</li>
             <li><strong>Resiliencia:</strong> <code>ProxyResilienceQueue</code> con <code>RedrivePolicy</code> hacia <code>ProxyDeadLetterQueue</code>; política de cola sin <code>Principal: '*'</code> ampliado — solo el rol de la Lambda proxy puede <code>SendMessage</code> donde aplique.</li>
           </ul>
         </section>
 
+        <section id="lambda-privada" class="mt-5">
+          <h2 class="h3 border-0 pb-0">Función Lambda privada — soberanía del proxy</h2>
+          <p class="small mb-0">
+            Las funciones del stack se ejecutan en <strong>VPC</strong> con <strong>EFS</strong> para material PKI; no hay URL pública ni API administrada en SAM que represente al proxy. El contrato de consumo es: conocer el <strong>nombre de la función</strong> (p. ej. <code>tld-validador-proxy-api</code>) o su <strong>ARN</strong> y usar el SDK de AWS para <code>Invoke</code>. Cualquier referencia de despliegue en satélites debe migrar de “URL del proxy” a <strong>ARN del Proxy</strong> / <strong>nombre de la función</strong> más política IAM.
+          </p>
+        </section>
+
         <section id="invocacion-sdk" class="mt-5">
-          <h2 class="h3 border-0 pb-0">Invocación directa — permiso <code>lambda:InvokeFunction</code></h2>
+          <h2 class="h3 border-0 pb-0">Invocación directa — <code>LambdaInvokePolicy</code> en los <code>template.yaml</code> clientes</h2>
           <p>
-            Cada satélite que deba llamar al proxy (p. ej. <code>inactividad</code>, <code>alias</code>, <code>p2m</code>) debe llevar en su <strong>rol de ejecución</strong> una sentencia IAM explícita que permita <code>lambda:InvokeFunction</code> sobre el ARN de la función <code>tld-validador-proxy-api</code> (o el nombre que despliegue el stack). No se expone URL HTTP interna del proxy en este modelo.
+            Cada satélite que deba llamar al proxy (p. ej. <code>tld-api-alias</code>, <code>tld-api-p2m</code>, <code>inactividad</code>) debe declarar en su propio <strong><code>template.yaml</code></strong> (sobre el rol de la Lambda satélite) una política del tipo <strong><code>LambdaInvokePolicy</code></strong> de SAM apuntando al <strong>nombre</strong> de la función proxy o, en políticas inline, <code>lambda:InvokeFunction</code> sobre el <strong>ARN del Proxy</strong> exportado por el stack <code>tld-validador-proxy</code> (<code>Fn::ImportValue</code> / parámetro por ambiente). Es el mismo patrón institucional ya usado para <code>tld-matriz-control-plan</code>.
           </p>
           <p>
             El <strong>timeout efectivo</strong> que percibe el llamador lo fija el <strong>cliente AWS SDK</strong> en el satélite (<code>LambdaClient</code> con configuración de <em>client timeout</em> / intentos de red), además del <code>Timeout</code> configurado en la Lambda del proxy. El equipo debe dimensionar ambos de forma coherente con la <strong>resiliencia controlada</strong> (Capa 1) documentada en <a href="resilience-strategy.html">Estrategia y Capa 1</a> y <a href="data-dictionary.html">Diccionario de datos</a>.
           </p>
-          <p class="small text-muted mb-0">
+          <div class="border border-secondary rounded overflow-hidden bg-light small mb-0">
+            <div class="px-3 py-2 border-bottom border-secondary bg-white fw-semibold">Ejemplo — política en el stack del cliente (SAM)</div>
+            <pre class="mb-0 p-3 small"><code>Policies:
+  - LambdaInvokePolicy:
+      FunctionName: tld-validador-proxy-api
+  # O ARN explícito / ImportValue del stack del proxy si el nombre varía por cuenta.</code></pre>
+          </div>
+          <p class="small text-muted mt-3 mb-0">
             Contrato de payload y respuesta (incl. semántica <code>202</code> lógica en el cuerpo de retorno): <a href="flow.html">Flujo General</a>.
           </p>
         </section>
@@ -141,7 +156,7 @@
                 </tr>
                 <tr>
                   <td>Borde de acceso</td>
-                  <td><strong>Invocación directa</strong> (AWS SDK / consola / EventBridge según diseño); <em>no</em> API Gateway en esta plantilla.</td>
+                  <td><strong>ARN del Proxy</strong> / <strong>nombre de la función</strong> + <code>lambda:InvokeFunction</code> (SDK); sin HTTP de entrada en SAM.</td>
                 </tr>
               </tbody>
             </table>
@@ -151,7 +166,7 @@
         <section id="template-completo" class="mt-5 mb-4">
           <h2 class="h3 border-0 pb-0"><code>template.yaml</code> propuesto (fragmento de stack)</h2>
           <p class="small text-muted">
-            <strong>Borrador:</strong> <code>sam validate</code>. Añade en el <em>stack del llamador</em> la política IAM con <code>lambda:InvokeFunction</code> al ARN exportado (o usa <code>Fn::ImportValue</code> si publicas outputs entre stacks). Sin <code>AWS::Serverless::Api</code> ni <code>Events: Api</code>.
+            <strong>Borrador:</strong> <code>sam validate</code>. En cada stack cliente, añade <code>LambdaInvokePolicy</code> (o equivalente) al <strong>ARN del Proxy</strong> / nombre de función exportado vía <code>Outputs</code> o <code>Fn::ImportValue</code>.
           </p>
           <div class="border border-secondary rounded overflow-hidden bg-dark wiki-copy-block wiki-code-scroll">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-bottom border-secondary">
@@ -162,7 +177,7 @@
 Transform: AWS::Serverless-2016-10-31
 Description: >
   tld-validador-proxy
-  Lambda invocable por SDK + resiliencia SQS (DLQ) + worker; molde SAM alineado a tld-notificacion sin API Gateway.
+  Lambda privada (orquestador + worker) + resiliencia SQS (DLQ); borde = Invoke SDK únicamente.
 
 Parameters:
 
@@ -334,7 +349,7 @@ Resources:
     Properties:
       FunctionName: tld-validador-proxy-api
       CodeUri: lambdas/proxy/
-      Handler: app.handler
+      Handler: orchestrator.lambdaHandler
       Runtime: nodejs20.x
       FileSystemConfigs:
         - Arn: !Sub
@@ -385,8 +400,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: tld-validador-proxy-resilience-worker
-      CodeUri: lambdas/proxy-worker/
-      Handler: worker.handler
+      CodeUri: lambdas/proxy/
+      Handler: worker.lambdaHandler
       Runtime: nodejs20.x
       FileSystemConfigs:
         - Arn: !Sub
@@ -467,7 +482,7 @@ Outputs:
           </div>
 
           <div class="alert alert-secondary small mt-3 mb-0" role="note">
-            <strong>IAM del llamador (fuera de este snippet):</strong> el rol de la Lambda satélite debe incluir <code>lambda:InvokeFunction</code> sobre <code>!GetAtt ProxyApiFunction.Arn</code> (o el ARN estable del entorno). Así se evita API Gateway y se mantiene <strong>menor privilegio</strong> frente a políticas SQS con <code>Principal '*'</code> del legado.
+            <strong>IAM del llamador (fuera de este snippet):</strong> en <code>tld-api-alias</code>, <code>tld-api-p2m</code>, etc., añade <code>LambdaInvokePolicy</code> con <code>FunctionName: tld-validador-proxy-api</code> o recurso <code>!GetAtt ProxyApiFunction.Arn</code> importado — mismo criterio que para <code>tld-matriz-control-plan</code>.
           </div>
           <p class="small text-muted mt-3 mb-0">
             Variante mínima sin colas: <a href="deployment.html">Despliegue (template)</a>.

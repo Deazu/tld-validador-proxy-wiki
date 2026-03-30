@@ -89,7 +89,7 @@
           </p>
           <p>
             Si hay coincidencia, entra el camino <code>tld-util</code> (<code>https</code> nativo de Node con <code>Agent</code> que carga las CA desde el volumen EFS): ahí sí se negocia TLS contra el validador usando la confianza Telered.
-            Si <strong>no</strong> hay coincidencia, muchas rutas caen en <code>axios</code> u otro cliente <strong>sin</strong> inyectar esas CA: el mismo microservicio termina hablando con la <strong>misma clase de endpoint</strong> bajo reglas de confianza distintas según un string de despliegue.
+            Si <strong>no</strong> hay coincidencia, muchas rutas caen en <code>axios</code> u otro cliente <strong>sin</strong> inyectar esas CA: el mismo microservicio termina hablando con el <strong>mismo destino HTTP</strong> bajo reglas de confianza distintas según un string de despliegue.
           </p>
           <p class="small text-muted mb-0">
             Analogía del <strong>portero</strong>: hoy hay dos puertas al mismo edificio; una pide el carné corporativo (Telered) y la otra acepta el carné “genérico” del barrio (CA públicas por defecto). La decisión de qué puerta usar no está en el registro del invitado (datos de canal), sino en una <strong>lista escrita a mano en la pared</strong> (<code>URL_CA_TELERED</code>) que hay que repintar en cada despliegue.
@@ -269,7 +269,7 @@
           </div>
           <h3 class="h5 mt-4">4.1. Auditoría del camino legacy (<code>inactividad</code> → <code>cuenta-nombre</code> → cola HTTP satélite)</h3>
           <p>
-            En <code>tld-api-alias/lambdas/inactividad/lib/notificar.js</code>, el flujo de <strong>notificación bancaria por inactividad</strong> arma una petición cifrada con <code>operacionesPaquete.cerrarPaquete</code> y la envía por HTTP al endpoint configurado en <code>END_POINT_API_VALIDADOR</code> (por defecto la API <strong><code>cuenta-nombre</code></strong>).
+            En <code>tld-api-alias/lambdas/inactividad/lib/notificar.js</code>, el flujo de <strong>notificación bancaria por inactividad</strong> arma una petición cifrada con <code>operacionesPaquete.cerrarPaquete</code> y la envía por HTTP al destino configurado en <code>END_POINT_API_VALIDADOR</code> (por defecto la API <strong><code>cuenta-nombre</code></strong>).
             El módulo <code>requestPost</code> usa un único <code>axios.post</code> sin política de reintentos ni clasificación de fallos: ante error de red o 5xx, devuelve un objeto <code>{ error: true, code: 500, message }</code> y el llamador debe inferir qué hacer.
           </p>
           <p>

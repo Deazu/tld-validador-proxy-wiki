@@ -77,7 +77,7 @@
               <strong>Localiza la fila de operación</strong> en <code>tld-validador-canal-operacion</code> (o el nombre operativo acordado) que empareja <code>idCanalValidador</code> (o GSI por alias) con el <code>metodo</code> — p. ej. <code>0010</code> o <code>0020</code>.
             </li>
             <li class="mb-2">
-              Establece <code>retryPolicyActive</code> en <strong><code>true</code></strong> solo si negocio y el banco aceptan <em>múltiples intentos de entrega</em> hacia ese endpoint (idempotencia o deduplicación en destino).
+              Establece <code>retryPolicyActive</code> en <strong><code>true</code></strong> solo si negocio y el banco aceptan <em>múltiples intentos de entrega</em> hacia ese <strong>host del validador</strong> (idempotencia o deduplicación en destino).
             </li>
             <li class="mb-2">
               Completa <code>maxRetryAttempts</code> (véase siguiente sección) y confirma que el documento JSON <code>retryPolicy</code> en <code>tld-validador-canal</code> (o override futuro por operación) define <code>baseDelayMs</code>, <code>maxDelayMs</code>, <code>jitterRatio</code> y <code>retryableHttpStatuses</code> alineados con ese canal.

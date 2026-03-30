@@ -187,7 +187,7 @@
         </li>
         <li class="list-group-item">
           <span class="badge bg-primary rounded-pill me-2 align-middle">□</span>
-          <strong>Investigación de endpoints:</strong> por el desorden en DEV, confirmar que la URL HTTP(S) del <strong>validador remoto</strong> apunta al entorno correcto (p. ej. stage <code>/dev</code> si ese backend sigue publicado detrás de un API HTTP privado) y a la misma topología de red (VPCe / integración privada) que el proxy debe alcanzar. El borde del <em>proxy</em> hacia tus satélites es <code>lambda:InvokeFunction</code>, no API Gateway — ver <a href="infrastructure.html">Infraestructura SAM</a>.
+          <strong>Conectividad al validador remoto:</strong> por el desorden en DEV, confirmar que la URL HTTP(S) del <strong>validador bancario</strong> apunta al entorno correcto (p. ej. stage <code>/dev</code> si ese backend sigue publicado detrás de un API HTTP privado) y a la misma topología de red (VPCe / integración privada) que la Lambda del proxy debe alcanzar. El borde del <em>proxy</em> hacia Alias, P2M, etc. es <strong>nombre/ARN de la función</strong> + <code>lambda:InvokeFunction</code> — ver <a href="infrastructure.html">Infraestructura SAM</a>.
         </li>
       </ul>
 

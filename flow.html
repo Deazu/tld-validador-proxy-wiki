@@ -53,7 +53,7 @@
             <li><a href="#diagrama-secuencia">Diagrama de secuencia</a></li>
             <li><a href="#diagrama-secuencia-reintentos">Fallo en notificación y reintentos en el Proxy</a></li>
             <li><a href="#diagrama-notificacion-asincrona">Notificación asíncrona 202 y backoff</a></li>
-            <li><a href="#orquestador-app">Lógica del orquestador (<code>app.js</code>)</a></li>
+            <li><a href="#orquestador-app">Lógica del orquestador (<code>orchestrator.js</code>)</a></li>
             <li><a href="#paso-a-paso">Explicación por fase</a></li>
             <li><a href="#estrategia-validacion">Validación en AWS (consola, sin mocks)</a></li>
             <li><a href="business-value.html#monitoreo-salud">Observabilidad forense y dashboards (Valor y justificación)</a></li>
@@ -63,41 +63,47 @@
 
         <h1 class="h2 mb-3">Flujo General</h1>
         <p class="lead text-muted">
-          Ciclo de vida de una petición al <code>tld-validador-proxy</code>: el borde es <strong>invocación directa de Lambda</strong> (<code>lambda:InvokeFunction</code> vía AWS SDK desde otra Lambda o servicio autorizado), no API Gateway. A partir del payload del evento, el handler orquesta logs, DynamoDB, cifrado híbrido y túnel TLS / mTLS hacia el validador. El <strong>timeout del llamador</strong> lo controla la configuración del cliente SDK además del <code>Timeout</code> de la función proxy.
+          Ciclo de vida de una petición al <code>tld-validador-proxy</code>: el borde es <strong>Consumer Service → AWS SDK (<code>Invoke</code>) → Proxy Orchestrator</strong> usando el <strong>ARN del Proxy</strong> o el <strong>nombre de la función</strong>. A partir del payload del evento, el orquestador encadena logs, DynamoDB, cifrado híbrido y túnel TLS / mTLS hacia el validador bancario. El <strong>timeout del llamador</strong> lo controla la configuración del cliente SDK además del <code>Timeout</code> de la función proxy.
         </p>
+        <div class="alert alert-info small mb-4" role="note">
+          <strong>Nota técnica:</strong> se adopta el patrón de <strong>invocación directa</strong> ya implementado en la organización para <code>tld-matriz-control-plan</code> (<code>LambdaClient</code> + <code>InvokeCommand</code>), eliminando la capa intermedia HTTP de API Gateway para reducir latencia y puntos de falla en el camino hacia el proxy.
+        </div>
 
         <section id="diagrama-secuencia" class="mt-4">
           <h2 class="h4">Diagrama de secuencia detallado</h2>
           <p class="small text-muted">
-            Vista lógica generada con <strong>Mermaid</strong>. <strong>mTLS</strong> aplica cuando el <em>remote endpoint</em> exige certificado de cliente; la base actual es TLS con CA en EFS y CRL previa al body (extensible a mTLS).
+            Vista lógica generada con <strong>Mermaid</strong>. <strong>mTLS</strong> aplica cuando el <strong>validador remoto (HTTPS)</strong> exige certificado de cliente; la base actual es TLS con CA en EFS y CRL previa al body (extensible a mTLS).
           </p>
           <div class="wiki-mermaid-wrap shadow-sm">
             <pre class="mermaid">sequenceDiagram
     autonumber
-    participant Orig as Origen_Lambda_SDK
-    participant Handler as Proxy_Handler
+    participant Cons as Consumer_Service
+    participant Sdk as AWS_SDK_Invoke
+    participant Orch as Proxy_Orchestrator
     participant Log as Logger_sanitize
     participant Canal as Canal_DynamoDB
     participant Crypto as OperacionesPaquete
     participant Http as HttpClient
-    participant Target as Remote_endpoint
+    participant Target as Validador_remoto_HTTPS
 
-    Orig->>+Handler: Lambda_Invoke payload JSON negocio
-    Handler->>+Log: Print meta sanitizada
+    Cons->>+Sdk: Invoke FunctionName o ARN del Proxy
+    Sdk->>+Orch: entrega payload JSON negocio
+    Orch->>+Log: Print meta sanitizada
     Note right of Log: PRINT_LOGS on y DENY_KEYS
-    Log-->>-Handler: ok
-    Handler->>+Canal: getCanal Query llaves operaciones
-    Canal-->>-Handler: urlValidador origen algoritmoCifrado
-    Handler->>Crypto: cerrarPaquete origen body modo desde Dynamo
+    Log-->>-Orch: ok
+    Orch->>+Canal: getCanal Query llaves operaciones
+    Canal-->>-Orch: urlValidador origen algoritmoCifrado
+    Orch->>Crypto: cerrarPaquete origen body modo desde Dynamo
     Note right of Crypto: GCM si aes-256-gcm si no variante CBC
-    Crypto-->>Handler: paquete cifrado
-    Handler->>+Http: requestSecure URL y body
+    Crypto-->>Orch: paquete cifrado
+    Orch->>+Http: requestSecure URL y body
     Http->>Http: TLS CA EFS CRL pre body
-    Note right of Http: opc mTLS si el target lo exige
+    Note right of Http: opc mTLS si el validador lo exige
     Http->>+Target: HTTPS POST
     Target-->>-Http: respuesta
-    Http-->>-Handler: status y body
-    Handler-->>-Orig: Payload retorno JSON contrato interno</pre>
+    Http-->>-Orch: status y body
+    Orch-->>-Sdk: Payload retorno JSON contrato interno
+    Sdk-->>-Cons: resultado Invoke al satélite</pre>
           </div>
           <h3 class="h5 mt-4" id="diagrama-secuencia-reintentos">Escenario: fallo transitorio en el downstream y política de reintentos</h3>
           <p class="small text-muted">
@@ -107,30 +113,34 @@
           <div class="wiki-mermaid-wrap shadow-sm">
             <pre class="mermaid">sequenceDiagram
     autonumber
-    participant Orig as Inactividad_lambda
-    participant Handler as Proxy_Handler
+    participant Cons as Consumer_Service
+    participant Sdk as AWS_SDK_Invoke
+    participant Orch as Proxy_Orchestrator
     participant Canal as Canal_DynamoDB
     participant Http as HttpClient
     participant Target as Validador_downstream
 
-    Orig->>Handler: Lambda_Invoke idCanal metodo dataPlana
-    Handler->>Canal: GetItem canalDto
-    Canal-->>Handler: urlValidador y retryPolicy JSON
-    Note over Handler: cifrado app y TLS omitidos aqui por brevedad
-    Handler->>Http: requestSecure intento 1
+    Cons->>Sdk: Invoke ARN del Proxy idCanal metodo dataPlana
+    Sdk->>Orch: evento sincrono
+    Orch->>Canal: GetItem canalDto
+    Canal-->>Orch: urlValidador y retryPolicy JSON
+    Note over Orch: cifrado app y TLS omitidos aqui por brevedad
+    Orch->>Http: requestSecure intento 1
     Http->>Target: HTTPS POST notificacion
     Target-->>Http: 503 o timeout
-    Http-->>Handler: fallo reintentable
-    Note over Handler: backoff exponencial jitter segun retryPolicy
-    Handler->>Http: requestSecure intento 2
+    Http-->>Orch: fallo reintentable
+    Note over Orch: backoff exponencial jitter segun retryPolicy
+    Orch->>Http: requestSecure intento 2
     Http->>Target: HTTPS POST notificacion
     alt Reintento exitoso
         Target-->>Http: 200 OK
-        Http-->>Handler: body respuesta
-        Handler-->>Orig: payload OK sincrono negocio
+        Http-->>Orch: body respuesta
+        Orch-->>Sdk: payload OK sincrono negocio
+        Sdk-->>Cons: resultado Invoke
     else Agotados maxRetries
-        Http-->>Handler: ultimo fallo
-        Handler-->>Orig: payload error PROXY_ERR mapeado
+        Http-->>Orch: ultimo fallo
+        Orch-->>Sdk: payload error PROXY_ERR mapeado
+        Sdk-->>Cons: resultado Invoke
     end</pre>
           </div>
           <p class="small text-muted mb-0">
@@ -139,29 +149,32 @@
 
           <h3 class="h5 mt-4" id="diagrama-notificacion-asincrona">Modo asíncrono: aceptación lógica <code>202</code> en el payload de retorno</h3>
           <p class="small text-muted">
-            Sin API Gateway no hay cabecera HTTP <code>202 Accepted</code>: el contrato es el <strong>cuerpo JSON que devuelve la Lambda</strong> al completar la fase síncrona mínima (p. ej. tras <code>SendMessage</code> exitoso a SQS). El handler retorna un objeto con <strong>status lógico 202</strong> (campo acordado, p. ej. <code>httpStatus: 202</code> o <code>modo: async_accepted</code>), <code>correlationId</code> y metadatos; el llamador interpreta que el trabajo quedó encolado y puede cerrar su invocación sin esperar al banco.
+            Sin cabeceras HTTP de API en el borde, no hay <code>202 Accepted</code> como header: el contrato es el <strong>cuerpo JSON que devuelve la Lambda</strong> al completar la fase síncrona mínima (p. ej. tras <code>SendMessage</code> exitoso a SQS). El orquestador retorna un objeto con <strong>status lógico 202</strong> (campo acordado, p. ej. <code>httpStatus: 202</code> o <code>modo: async_accepted</code>), <code>correlationId</code> y metadatos; el SDK en el Consumer Service interpreta que el trabajo quedó encolado y puede cerrar su <code>Invoke</code> sin esperar al banco.
             Reintentos hacia el validador ocurren en el <strong>worker</strong> (otra Lambda disparada por SQS), no en la invocación del proxy.
           </p>
           <div class="wiki-mermaid-wrap shadow-sm">
             <pre class="mermaid">sequenceDiagram
     autonumber
-    participant Orig as Origen_Lambda_SDK
-    participant Prox as Proxy_Lambda_handler
+    participant Cons as Consumer_Service
+    participant Sdk as AWS_SDK_Invoke
+    participant Prox as Proxy_Orchestrator
     participant Cola as Cola_SQS
     participant W as Worker_Lambda
     participant Ban as Banco_validador
 
-    Orig->>Prox: Lambda_Invoke notificacion metodo payload
+    Cons->>Sdk: Invoke ARN del Proxy notificacion metodo payload
+    Sdk->>Prox: evento sincrono
     Prox->>Cola: SendMessage trabajo idempotente
     Cola-->>Prox: OK
-    Prox-->>Orig: Payload JSON status_logico_202 correlationId
+    Prox-->>Sdk: Payload JSON status_logico_202 correlationId
+    Sdk-->>Cons: resultado Invoke
     Cola->>W: evento batch mensajes
     W->>Ban: intento 1 HTTPS notificacion
     Ban-->>W: fallo transitorio
     W->>W: espera exponential backoff
     W->>Ban: intento 2 HTTPS notificacion
     Ban-->>W: 200 OK exito
-    Note over W: telemetria por intento sin bloquear a Orig</pre>
+    Note over W: telemetria por intento sin bloquear a Cons</pre>
           </div>
           <p class="small text-muted mb-0">
             SQS, 202 y worker: <a href="async-worker.html">Resiliencia — Capa 2</a> · configuración en tabla: <a href="resilience-config.html">Manual DynamoDB</a> · trade-offs de producto: <a href="business-value.html#estrategia-sync-async-fire-forget">Valor y justificación — §4.5</a>.
@@ -169,9 +182,9 @@
         </section>
 
         <section id="orquestador-app" class="mt-5">
-          <h2 class="h4">Lógica del orquestador (<code>app.js</code>)</h2>
+          <h2 class="h4">Lógica del orquestador (<code>orchestrator.js</code>)</h2>
           <p>
-            El <strong>handler</strong> de la Lambda es el director de orquesta: no implementa TLS ni AES él mismo; encadena módulos con contratos estables.
+            El <strong>handler</strong> exportado por <code>orchestrator.js</code> es el director de orquesta: no implementa TLS ni AES él mismo; encadena módulos con contratos estables.
             Las analogías del resto de la wiki siguen aplicando: el <strong>portero</strong> (TLS + CRL) solo deja pasar al interior después del carné;
             las <strong>cubetas</strong> (<code>Buffer</code>) aparecen al leer CA/CRL y al ensamblar la respuesta HTTP; el <strong>pasaporte doble</strong> (mTLS) es opcional por canal.
           </p>
@@ -267,7 +280,7 @@
               <tbody>
                 <tr>
                   <td>Entrada</td>
-                  <td><code>lambda:InvokeFunction</code> (SDK) → <code>handler</code></td>
+                  <td><code>lambda:InvokeFunction</code> (SDK) → <code>orchestrator.lambdaHandler</code></td>
                   <td>Payload JSON del evento: <code>idCanalValidador</code> (id o alias), <code>metodo</code>, <code>dataPlana</code>; <code>correlationId</code> opcional en el cuerpo. Sin modo AES ni rutas de llave en claro. El <strong>timeout de espera</strong> del llamador lo fija el <strong>cliente AWS SDK</strong> además del <code>Timeout</code> de la Lambda proxy.</td>
                 </tr>
                 <tr>
@@ -301,7 +314,7 @@
         <section id="paso-a-paso" class="mt-5">
           <h2 class="h4">Explicación exhaustiva por participante</h2>
 
-          <h3 class="h5 mt-4">1. Origen (SDK) → Proxy Handler</h3>
+          <h3 class="h5 mt-4">1. Consumer Service (SDK) → Proxy Orchestrator</h3>
           <p>
             Otra Lambda o proceso autorizado invoca con <code>InvokeCommand</code> (o equivalente): payload con identificadores de negocio y <code>dataPlana</code>; <strong>no</strong> se envía modo AES ni rutas de llaves en claro.
             El handler valida forma del evento, genera o propaga <code>correlationId</code> y prepara la orquestación. Quien llama debe configurar el <strong>timeout del cliente SDK</strong> acorde al peor caso de Capa 1 (reintentos Opt-in + presupuesto Lambda).
@@ -337,7 +350,7 @@
           <p>
             El cliente HTTPS nativo (<code>httpsClient.js</code>) construye un <code>Agent</code> con CA leídas de EFS, ejecuta el handshake, obtiene el certificado del peer,
             ejecuta la validación <strong>CRL</strong> antes de enviar el cuerpo HTTP, y entonces envía el paquete cifrado a <code>urlValidador</code>.
-            Si el <em>remote endpoint</em> exige <strong>mTLS</strong>, se extiende el agente con <code>cert</code>/<code>key</code> desde EFS sin cambiar el diagrama de orquestación.
+            Si el <strong>validador remoto</strong> exige <strong>mTLS</strong>, se extiende el agente con <code>cert</code>/<code>key</code> desde EFS sin cambiar el diagrama de orquestación.
           </p>
           <p class="small text-muted mb-0">
             Detalle de módulos TLS/CRL: <a href="crypto-transport.html#diagrama-interaccion">Túnel de Confianza (Transporte)</a>.
@@ -347,13 +360,13 @@
         <section id="estrategia-validacion" class="mt-5">
           <h2 class="h4">Validación en AWS (consola, canales reales o dummy ya desplegados)</h2>
           <p>
-            El contrato de esta wiki asume que el equipo <strong>prueba contra la cuenta AWS real</strong> (dev/qa): canales validadores ya existentes en DynamoDB, URLs que apunten a validadores reales o endpoints dummy corporativos en la misma VPC, y EFS montado como en producción.
+            El contrato de esta wiki asume que el equipo <strong>prueba contra la cuenta AWS real</strong> (dev/qa): canales validadores ya existentes en DynamoDB, URLs HTTPS que apunten a validadores reales o hosts de prueba corporativos en la misma VPC, y EFS montado como en producción.
             No se documenta aquí una capa de mocks ni harness local complejo: el “portero” y el “pasaporte” se validan con el mismo TLS y PKI que verá el usuario final.
           </p>
           <h3 class="h5 mt-3">Checklist en consola (orden sugerido)</h3>
           <ol class="small">
             <li><strong>DynamoDB:</strong> verificar ítems en <code>tld-validador-canal</code>, <code>tld-validador-canal-operacion</code> y <code>tld-validador-canal-llave</code> para el id/alias que usarás; confirmar que el GSI <code>alias-index</code> devuelve el canal sin <code>Scan</code> (ver <a href="data-dictionary.html">diccionario de datos</a>).</li>
-            <li><strong>Lambda → Test:</strong> en la consola de Lambda, pestaña <em>Test</em>, crear un evento de ejemplo alineado con <a href="identity.html#ejemplo-evento">Identidad / ejemplo de evento</a>; ejecutar y revisar la respuesta HTTP mapeada (400/403/404/502/504 según <a href="data-dictionary.html#matriz-errores">matriz <code>PROXY_ERR_*</code></a>).</li>
+            <li><strong>Lambda → Test:</strong> en la consola de Lambda, pestaña <em>Test</em>, crear un evento de ejemplo alineado con <a href="identity.html#ejemplo-evento">Identidad / ejemplo de evento</a>; ejecutar y revisar el <strong>payload de retorno</strong> (semántica 4xx/5xx lógica según <a href="data-dictionary.html#matriz-errores">matriz <code>PROXY_ERR_*</code></a>).</li>
             <li><strong>CloudWatch Logs:</strong> confirmar que <code>logger.Print</code> solo muestra metadatos sanitizados (<code>PRINT_LOGS</code> según política) y que no aparecen PEM, passphrases ni cuerpos completos.</li>
             <li><strong>Tabla de telemetría:</strong> en <code>tld-validador-proxy-telemetry</code>, filtrar por <code>correlationId</code> (o GSI forense) y comprobar la secuencia de <code>phase</code> hasta <code>HTTP_Response</code> o <code>FAIL</code> con <code>detail.internalCode</code>.</li>
             <li><strong>Invocación:</strong> probar con consola Lambda (<em>Test</em>) o desde una Lambda satélite de laboratorio con rol que tenga <code>lambda:InvokeFunction</code>; validar que el <strong>timeout del cliente SDK</strong> y el de la función proxy cubren el escenario de resiliencia controlada sin cortar antes que el validador remoto.</li>

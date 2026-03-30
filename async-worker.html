@@ -83,7 +83,7 @@
         <section id="http-202" class="mt-5">
           <h2 class="h3 border-0 pb-0">Aceptación lógica <strong>202</strong> — en el payload de retorno de la Lambda</h2>
           <p>
-            Sin API Gateway no existe la cabecera HTTP <code>202 Accepted</code>. En modo asíncrono, el handler del proxy devuelve en el <strong>objeto de respuesta de la invocación</strong> (serializado como JSON en el resultado de <code>Invoke</code>) un contrato que <em>equivale semánticamente</em> a 202: p. ej. <code>{ "status": 202, "correlationId": "...", "accepted": true }</code> o el esquema que fije el equipo, en cuanto el trabajo queda <em>comprometido</em> de forma durable — típicamente tras <code>SendMessage</code> exitoso a SQS.
+            En el borde por <code>Invoke</code> no hay cabecera HTTP <code>202 Accepted</code>. En modo asíncrono, el orquestador devuelve en el <strong>objeto de respuesta de la invocación</strong> (serializado como JSON en el resultado de <code>Invoke</code>) un contrato que <em>equivale semánticamente</em> a 202: p. ej. <code>{ "status": 202, "correlationId": "...", "accepted": true }</code> o el esquema que fije el equipo, en cuanto el trabajo queda <em>comprometido</em> de forma durable — típicamente tras <code>SendMessage</code> exitoso a SQS.
             Ese payload no implica que el banco haya acusado recibo; solo que el proxy asumió el encargo en cola.
           </p>
           <p>

@@ -85,7 +85,7 @@
           <li><strong>VpcConfig:</strong> mismos <code>SecurityGroupIds</code> y <code>SubnetIds</code> que el servicio hermano en cada ambiente (valores inyectados vía <code>samconfig.toml</code>).</li>
           <li><strong>FileSystemConfigs:</strong> ARN del access point de EFS y <code>LocalMountPath: /mnt/tld-llaves</code>.</li>
           <li><strong>IAM:</strong> lectura (y si aplica escritura acotada) sobre tablas <code>tld-validador-canal</code>, <code>tld-validador-canal-llave</code>, <code>tld-validador-canal-operacion</code> y similares; <code>kms:Encrypt</code> / <code>kms:Decrypt</code> sobre la clave indicada; <code>dynamodb:PutItem</code> (o document API) sobre la tabla de telemetría; permisos EFS para montaje.</li>
-          <li><strong>Invocación directa:</strong> sin API Gateway en el borde del proxy; el plano debe permitir que orígenes autorizados llamen <code>lambda:InvokeFunction</code> al ARN del handler (política IAM en el rol del satélite). Ver <a href="infrastructure.html#invocacion-sdk">Infraestructura SAM — invocación SDK</a>.</li>
+          <li><strong>Función Lambda privada:</strong> el plano del proxy no define HTTP de entrada; los satélites declaran <code>LambdaInvokePolicy</code> (o equivalente) sobre el <strong>ARN del Proxy</strong> / nombre de función. Ver <a href="infrastructure.html#invocacion-sdk">Infraestructura SAM — invocación SDK</a>.</li>
         </ul>
       </section>
 

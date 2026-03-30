@@ -73,7 +73,7 @@
         </p>
         <p class="small text-muted mb-0">
           En el despliegue <strong>base</strong> de esta wiki, el foco es: TLS con <strong>CA propias</strong> + <strong>CRL</strong> antes del cuerpo HTTP.
-          El modo <strong>mTLS completo</strong> (certificado de cliente en el Agent) es el siguiente escalón cuando el endpoint lo exija; la idea de “doble pasaporte” sigue siendo la misma.
+          El modo <strong>mTLS completo</strong> (certificado de cliente en el Agent) es el siguiente escalón cuando el <strong>validador remoto</strong> lo exija; la idea de “doble pasaporte” sigue siendo la misma.
         </p>
       </section>
 
@@ -136,7 +136,7 @@
         <p class="small mb-0">
           En TLS “solo servidor”, solo el validador enseña X.509 y nosotros lo comprobamos.
           Con <strong>mTLS</strong>, nosotros también presentamos certificado de cliente y el validador aplica su propia CA/política hacia el Proxy.
-          En esta base de código, eso implicaría añadir <code>cert</code> y <code>key</code> al <code>Agent</code> cuando el endpoint lo exija; la narrativa del “doble carné” es la misma que en la sección de arriba.
+          En esta base de código, eso implicaría añadir <code>cert</code> y <code>key</code> al <code>Agent</code> cuando el <strong>validador remoto</strong> lo exija; la narrativa del “doble carné” es la misma que en la sección de arriba.
         </p>
       </div>
 
@@ -413,7 +413,7 @@
           <pre class="wiki-samconfig-pre mb-0 p-3 text-light bg-dark rounded-0"><code id="wiki-code-errors-js">'use strict';
 
 /**
- * Fallos tipados del plano de transporte (TLS, CRL, timeouts hacia el endpoint remoto).
+ * Fallos tipados del plano de transporte (TLS, CRL, timeouts hacia el validador remoto).
  * El handler usa instanceof / err.code para mapear a HTTP y telemetría.
  */
 class TlsHandshakeError extends Error {
@@ -676,7 +676,7 @@ module.exports = {
         <!-- httpsClient.js -->
         <h3 class="h5 mt-4"><code>httpsClient.js</code></h3>
         <p class="small">
-          Este archivo es el <strong>cliente HTTPS</strong> del proxy: sabe abrir el túnel TLS hacia la URL del validador, pero no sabe nada de reglas de negocio.
+          Este archivo es el <strong>cliente HTTPS</strong> del proxy: sabe abrir el túnel TLS hacia la <strong>URL HTTPS del validador bancario</strong> (desde Dynamo), pero no sabe nada de reglas de negocio.
           El nombre lleva <code>https</code> porque usa el módulo oficial de Node (<code>require('https')</code>), no una librería envuelta donde no ves el socket.
         </p>
 
@@ -873,7 +873,7 @@ module.exports = { requestSecure, getAgent };
         </div>
         <h4 class="h6 text-secondary mt-3">Notas de producción / mejores prácticas adicionales (<code>httpsClient.js</code>)</h4>
         <ul class="small mb-0">
-          <li>Pruebas de carga: subir <code>maxSockets</code> solo si el endpoint remoto y la Lambda toleran más conexiones simultáneas.</li>
+          <li>Pruebas de carga: subir <code>maxSockets</code> solo si el <strong>validador remoto</strong> y la Lambda toleran más conexiones simultáneas.</li>
           <li>Si el target exige mTLS en el futuro, el agente necesitará <code>cert</code>/<code>key</code>; planificar rutas EFS y rotación.</li>
           <li><strong>Cold start:</strong> primera llamada a <code>getAgent()</code> + handshake es el pico; considerar warm-up controlado o provisioned concurrency si el SLA es estricto.</li>
         </ul>
@@ -994,7 +994,7 @@ module.exports = { requestSecure, getAgent };
                 <td><code>PROXY_HTTP_RESPONSE_TIMEOUT_MS</code></td>
                 <td>Limita lectura del body de respuesta.</td>
                 <td>Memoria y tiempo de facturación crecen sin límite.</td>
-                <td>30–120s según SLA del endpoint remoto.</td>
+                <td>30–120s según SLA del validador remoto.</td>
               </tr>
               <tr>
                 <td><code>PROXY_CRL_CACHE_TTL_MS</code></td>
@@ -1104,7 +1104,7 @@ module.exports = { requestSecure, getAgent };
         <h4 class="h6 text-secondary">Notas de producción / mejores prácticas adicionales</h4>
         <ul class="small mb-0">
           <li>Threat modeling anual del proxy: superficie de red, EFS, DynamoDB de telemetría, permisos <code>lambda:InvokeFunction</code> y roles IAM de llamadores.</li>
-          <li>Encriptación en tránsito entre llamador → Lambda (TLS de la API de AWS) y Lambda → endpoint remoto revisada en diagramas de arquitectura.</li>
+          <li>Encriptación en tránsito entre llamador → Lambda (TLS al servicio AWS) y Lambda → <strong>validador remoto (HTTPS)</strong> revisada en diagramas de arquitectura.</li>
         </ul>
       </section>
 
@@ -1122,7 +1122,7 @@ module.exports = { requestSecure, getAgent };
           <li><strong>Logs:</strong> buscar mensajes de <code>TlsHandshakeError</code>, <code>CrlCheckError</code>, <code>CERT_REVOKED</code>, <code>RemoteEndpointTimeout</code> en CloudWatch Logs Insights.</li>
           <li><strong>TLS handshake fallido:</strong> comparar cadena presentada por el servidor (<code>openssl s_client -connect host:443 -showcerts</code> desde un bastión) con las CA montadas en EFS.</li>
           <li><strong><code>CERT_REVOKED</code>:</strong> verificar que la CRL en EFS es la última emitida y que el serial del certificado coincide tras normalización.</li>
-          <li><strong>Pruebas locales (opcional):</strong> montar EFS con Docker/amazonlinux o VPN solo si hace falta reproducir rutas PEM/CRL fuera de AWS; el <strong>camino de contrato</strong> sigue siendo invocación real de la Lambda contra tablas y endpoints desplegados (<a href="flow.html#estrategia-validacion">Flujo General</a>).</li>
+          <li><strong>Pruebas locales (opcional):</strong> montar EFS con Docker/amazonlinux o VPN solo si hace falta reproducir rutas PEM/CRL fuera de AWS; el <strong>camino de contrato</strong> sigue siendo invocación real de la Lambda contra tablas y validadores desplegados en AWS (<a href="flow.html#estrategia-validacion">Flujo General</a>).</li>
           <li><strong>Herramientas:</strong> <code>curl --cacert</code>, <code>openssl crl</code>, AWS Systems Manager Session Manager para inspeccionar instancias con mount similar.</li>
         </ul>
         <h4 class="h6 text-secondary">Notas de producción / mejores prácticas adicionales</h4>
@@ -1139,10 +1139,10 @@ module.exports = { requestSecure, getAgent };
         </p>
         <ul class="small">
           <li><strong>OCSP stapling</strong> en el servidor remoto para aliviar dependencia de CRL grande (el cliente seguiría validando política según lo acordado).</li>
-          <li><strong>mTLS</strong> si el endpoint exige certificado de cliente; requiere gestión de claves y rotación en EFS o Secrets Manager.</li>
-          <li><strong>Rate limiting / cuotas</strong> en el llamador, alarmas de concurrencia Lambda y políticas IAM acotadas para contener abusos sin depender de API Gateway en el borde del proxy.</li>
+          <li><strong>mTLS</strong> si el <strong>validador remoto</strong> exige certificado de cliente; requiere gestión de claves y rotación en EFS o Secrets Manager.</li>
+          <li><strong>Rate limiting / cuotas</strong> en el llamador, alarmas de concurrencia Lambda y políticas IAM acotadas sobre el <strong>ARN del Proxy</strong> para contener abusos.</li>
           <li><strong>Pinning de SPKI</strong> solo en casos excepcionales (coste operativo alto de rotación).</li>
-          <li><strong>Tests de contrato</strong> opcionales en pipeline (mock TLS) solo si el equipo los mantiene; el <strong>contrato de aceptación</strong> sigue siendo prueba contra endpoints y tablas reales en AWS, como en <a href="flow.html#estrategia-validacion">Flujo General</a>.</li>
+          <li><strong>Tests de contrato</strong> opcionales en pipeline (mock TLS) solo si el equipo los mantiene; el <strong>contrato de aceptación</strong> sigue siendo prueba contra validadores HTTPS y tablas reales en AWS, como en <a href="flow.html#estrategia-validacion">Flujo General</a>.</li>
         </ul>
         <h4 class="h6 text-secondary">Notas de producción / mejores prácticas adicionales</h4>
         <ul class="small mb-0">

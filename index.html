@@ -133,20 +133,22 @@
         <div class="wiki-section-eyebrow text-center">Corazón del sistema</div>
         <h2 class="h4 text-center mb-2">Secuencia maestra: orquestación + telemetría lateral</h2>
         <p class="small text-muted text-center mx-auto mb-3" style="max-width: 40rem;">
-          Cada fase crítica deja huella en <strong>Telemetría</strong> (DynamoDB): no bloquea el camino feliz si falla el <code>PutItem</code> (<a href="crypto-transport.html#fail-safe-telemetry">política fail-safe</a>), pero en condiciones normales reconstruyes el incidente como si leyeras la <strong>cinta negra</strong> junto al <strong>portero</strong>. El borde de entrada al proxy es <strong>invocación directa de Lambda</strong> (<code>lambda:InvokeFunction</code>), no API Gateway — ver <a href="project-structure.html">Estructura del repositorio</a>, <a href="infrastructure.html">Infraestructura SAM</a> y <a href="flow.html">Flujo General</a>.
+          Cada fase crítica deja huella en <strong>Telemetría</strong> (DynamoDB): no bloquea el camino feliz si falla el <code>PutItem</code> (<a href="crypto-transport.html#fail-safe-telemetry">política fail-safe</a>), pero en condiciones normales reconstruyes el incidente como si leyeras la <strong>cinta negra</strong> junto al <strong>portero</strong>. El borde de entrada al proxy es <strong>Consumer Service → AWS SDK (<code>Invoke</code>) → función Lambda privada</strong> (<strong>ARN del Proxy</strong> o <strong>nombre de la función</strong>) — ver <a href="project-structure.html">Estructura del repositorio</a>, <a href="infrastructure.html">Infraestructura SAM</a> y <a href="flow.html">Flujo General</a>.
         </p>
         <div class="wiki-mermaid-wrap shadow-sm mb-3 wiki-diagram-heart">
           <pre class="mermaid">sequenceDiagram
     autonumber
-    participant Orig as Origen_SDK_Invoke
+    participant Cons as Consumer_Service
+    participant Sdk as AWS_SDK_Invoke
     participant Log as Logger
     participant Idn as IdentityManager
     participant Op as OperacionesPaquete
     participant Htt as httpsClient
     participant Tel as Telemetria_emit
-    participant Rem as Endpoint_validador
+    participant Rem as Validador_remoto_HTTPS
 
-    Orig->>Log: evento y contexto
+    Cons->>Sdk: Invoke nombre o ARN del Proxy
+    Sdk->>Log: evento y contexto
     Log->>Tel: emit Logger meta
     Log->>Idn: resolveChannel DynamoDB
     Idn->>Tel: emit Identity fase
@@ -167,7 +169,8 @@
       Htt-->>Op: error controlado
     end
     Op-->>Log: abrir paquete o error
-    Log-->>Orig: payload retorno Invoke</pre>
+    Log-->>Sdk: payload retorno Lambda
+    Sdk-->>Cons: resultado Invoke</pre>
         </div>
         <p class="small mx-auto mb-5" style="max-width: 42rem;">
           La Lambda actúa como <strong>director de orquesta</strong>: <code>IdentityManager</code> sustituye el legado de <code>canal.js</code> con lecturas <code>GetItem</code>/GSI y DTO congelado (nadie reescribe el <strong>pasaporte</strong> a mitad del control); <code>httpsClient</code> concentra el <strong>portero</strong> de <strong>Conectividad Segura (TLS / mTLS)</strong>, la CRL y el <strong>doble pasaporte TLS / mTLS</strong>: el validador prueba su identidad hacia nosotros y, cuando el perfil del canal lo exige, nosotros presentamos <strong>certificado de cliente</strong> hacia él. Entre ambos, <code>OperacionesPaquete</code> llena las <strong>cubetas</strong> de cifrado de aplicación antes de que un solo byte sensible cruce el cable hacia el validador.
@@ -189,7 +192,7 @@
 
         <h2 class="h4">Alcance</h2>
         <ul>
-          <li>Orquestación: dos lecturas de canal (emisor / validador), cifrado hacia el <em>remote endpoint</em>, HTTP(s) con política unificada de <strong>Conectividad Segura (TLS / mTLS)</strong>.</li>
+          <li>Orquestación: dos lecturas de canal (emisor / validador), cifrado hacia el <strong>validador remoto (HTTPS)</strong>, con política unificada de <strong>Conectividad Segura (TLS / mTLS)</strong>.</li>
           <li>Telemetría técnica en DynamoDB (tabla dedicada) para handshake, CRL, capa TLS / mTLS, HTTP y tiempos.</li>
           <li>Compatibilidad de despliegue con el estándar SAM de los repos existentes (VPC, EFS, KMS MRK).</li>
         </ul>

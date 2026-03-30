@@ -69,7 +69,7 @@
             si no hay resultado, <strong>Scan</strong> filtrado por <code>alias</code>. Sobre el ítem: resuelve <code>llaveCifrado</code> y <code>llaveDescifrado</code>
             vía <code>getLlave</code> cuando el valor no es ARN; carga <code>getOperaciones</code> desde <code>tld-validador-canal-operacion</code>.
             Campos que el motor de negocio espera hoy incluyen <code>algoritmoCifrado</code>, <code>llaveCifrado</code>, operaciones y metadatos de canal.
-            El proxy autónomo debe añadir <code>urlValidador</code> (no presente en el legado analizado) para el <em>remote endpoint</em>.
+            El proxy autónomo debe añadir <code>urlValidador</code> (no presente en el legado analizado) para el <strong>validador remoto (HTTPS)</strong>.
           </p>
           <div class="wiki-mermaid-wrap shadow-sm mb-3">
             <pre class="mermaid">flowchart TD
@@ -100,7 +100,7 @@
           <ul>
             <li><code>tld-validador-canal-llave</code> — referencias <code>idLlave</code>, <code>archivo</code> bajo EFS o ARN KMS.</li>
             <li><code>tld-validador-canal-operacion</code> — operaciones habilitadas por <code>metodo</code>.</li>
-            <li><code>tld-validador-canal-auth-token</code> — tokens para auth dinámica hacia el <em>remote endpoint</em> (si aplica).</li>
+            <li><code>tld-validador-canal-auth-token</code> — tokens para auth dinámica hacia el <strong>validador remoto</strong> (si aplica).</li>
           </ul>
         </section>
 
@@ -132,7 +132,7 @@
                 <tr class="table-warning">
                   <td><code>urlValidador</code></td>
                   <td><strong>Sí (nuevo)</strong></td>
-                  <td>URL HTTPS del <em>remote endpoint</em> (p. ej. <code>https://validador.ejemplo/api/ruta</code>). Sin esto el proxy no puede enrutar el tráfico de forma autónoma.</td>
+                  <td>URL HTTPS del <strong>validador bancario</strong> (p. ej. <code>https://validador.ejemplo/api/ruta</code>). Sin esto el proxy no puede abrir el túnel TLS de salida de forma autónoma. El consumo del proxy por los satélites usa el <strong>ARN del Proxy</strong> / <strong>nombre de la función</strong>, no esta URL.</td>
                 </tr>
                 <tr>
                   <td><code>llaveCifrado</code></td>
