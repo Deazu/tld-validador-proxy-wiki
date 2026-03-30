@@ -70,6 +70,7 @@
             <li><a href="#invocacion-sdk">Invocación directa y <code>LambdaInvokePolicy</code> en clientes</a></li>
             <li><a href="#dlq-visibility">DLQ y <code>VisibilityTimeout</code></a></li>
             <li><a href="#nombres-recursos">Nombres de recursos del proxy</a></li>
+            <li><a href="#iam-dynamo-canal">IAM DynamoDB — tablas de configuración de canal</a></li>
             <li><a href="#template-completo"><code>template.yaml</code> propuesto</a></li>
           </ul>
         </nav>
@@ -161,6 +162,21 @@
               </tbody>
             </table>
           </div>
+        </section>
+
+        <section id="iam-dynamo-canal" class="mt-5">
+          <h2 class="h3 border-0 pb-0">IAM DynamoDB — lectura de configuración centralizada</h2>
+          <p class="small">
+            El proxy es <strong>data-driven</strong>: el rol de <strong>ProxyApiFunction</strong> y el de <strong>ProxyWorkerFunction</strong> deben poder leer la configuración de canales y operaciones en DynamoDB. En el fragmento SAM siguiente, la sentencia <code>DynamoReadCanalFamily</code> concede explícitamente <code>dynamodb:GetItem</code> y <code>dynamodb:Query</code> (además de <code>dynamodb:BatchGetItem</code> para cargas por lote) sobre los ARN de:
+          </p>
+          <ul class="small mb-2">
+            <li><code>tld-validador-canal</code> (tabla e índices <code>/index/*</code>)</li>
+            <li><code>tld-validador-canal-operacion</code> (tabla e índices <code>/index/*</code>)</li>
+            <li><code>tld-validador-canal-llave</code></li>
+          </ul>
+          <p class="small text-muted mb-0">
+            Sin esas acciones, el orquestador no puede resolver <code>urlValidador</code>, <code>retryPolicyActive</code>, <code>operationTimeoutMs</code>, etc. Ver <a href="data-dictionary.html#tabla-operacion">Diccionario — <code>tld-validador-canal-operacion</code></a>.
+          </p>
         </section>
 
         <section id="template-completo" class="mt-5 mb-4">
@@ -490,7 +506,7 @@ Outputs:
         </section>
 
         <p class="text-muted small mt-5 mb-1">
-          <strong>Documento:</strong> Infraestructura SAM — Lambda + SQS. <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+          <strong>Documento:</strong> Infraestructura SAM — Lambda + SQS. <strong>Última actualización:</strong> <time datetime="2026-03-29">29 de marzo de 2026</time>.
         </p>
       </div>
     </main>

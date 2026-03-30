@@ -52,8 +52,9 @@
       </p>
       <h1 class="h2 mb-2">Diccionario de Datos</h1>
       <p class="lead text-muted mb-3">
-        Tablas DynamoDB, atributos tipados y layout de EFS necesarios para que el <code>tld-validador-proxy</code> sea <strong>operativo y autónomo</strong>:
-        resolución de canal, cifrado de aplicación, transporte TLS/mTLS, revocación y telemetría forense sin PII.
+        Tablas DynamoDB, atributos tipados y layout de EFS necesarios para que el <code>tld-validador-proxy</code> sea <strong>operativo, autónomo y data-driven</strong>:
+        la <strong>fuente de verdad por operación</strong> para resiliencia y timeouts de salida hacia el banco es <code>tld-validador-canal-operacion</code> (alineado a la auditoría de <code>tld-api-p2m</code> y <code>tld-api-alias</code>), complementada por <code>tld-validador-canal</code> y <code>tld-validador-canal-llave</code>.
+        Si un atributo requerido por el proxy <strong>no existe</strong> en el ítem, el servicio asume <strong>valores conservadores</strong> (sin reintentos de negocio, timeout de lectura por defecto documentado en código).
       </p>
 
       <nav class="wiki-inpage-toc small" aria-label="En esta página">
@@ -61,7 +62,8 @@
         <ul class="mb-0">
           <li><a href="#tabla-canal">1. <code>tld-validador-canal</code></a></li>
           <li><a href="#tabla-llave">2. <code>tld-validador-canal-llave</code></a></li>
-          <li><a href="#tabla-operacion">3. <code>tld-validador-canal-operacion</code></a></li>
+          <li><a href="#tabla-operacion">3. <code>tld-validador-canal-operacion</code> (fuente de verdad resiliencia)</a></li>
+          <li><a href="#defaults-conservadores">Valores conservadores si falta el dato</a></li>
           <li><a href="#tabla-telemetry">4. <code>tld-validador-proxy-telemetry</code></a></li>
           <li><a href="#restricciones-formato">5. Restricciones de formato y longitud</a></li>
           <li><a href="#matriz-errores">6. Matriz maestra <code>PROXY_ERR_*</code> y telemetría</a></li>
@@ -249,11 +251,11 @@
       </section>
 
       <section id="tabla-operacion" class="mt-5">
-        <h2 class="h3 border-0 pb-0">3. Tabla <code>tld-validador-canal-operacion</code></h2>
+        <h2 class="h3 border-0 pb-0">3. Tabla <code>tld-validador-canal-operacion</code> — fuente de verdad (resiliencia y operación)</h2>
         <p class="small">
-          <strong>Rol:</strong> autorización fina: qué códigos de método de negocio (<code>metodo</code> en el evento) están permitidos para un <code>idCanal</code> y, opcionalmente, URL específica por operación.
-          El proxy debe rechazar métodos no declarados antes de abrir TLS o cifrar payload.
-          Puede además declarar si la operación participa en la <strong>política de reintentos</strong> del Proxy (<code>retryPolicyActive</code>, <code>maxRetryAttempts</code>) y, en diseños futuros, modo de respuesta síncrona vs <code>202</code> — ver <a href="resilience-config.html">Manual de configuración — Resiliencia</a> y <a href="business-value.html#estrategia-sync-async-fire-forget">Valor y justificación — §4.5</a>.
+          <strong>Rol:</strong> además de autorizar qué <code>metodo</code> aplica por <code>idCanal</code> y opcionalmente <code>urlOperacion</code> (patrón ya consumido en <code>tld-api-p2m</code>), esta tabla es la <strong>fuente de verdad</strong> para la <strong>Resiliencia controlada</strong> del proxy: interruptor de reintentos, límites, backoff y <strong>timeout por operación</strong> hacia el validador.
+          Los satélites legacy pueden seguir leyendo solo un subconjunto de atributos; el proxy, en cambio, materializa el contrato completo descrito abajo.
+          Reglas de fusión con el JSON <code>retryPolicy</code> en <code>tld-validador-canal</code>: <a href="resilience-config.html">Manual DynamoDB</a> · comportamiento ante huecos: <a href="#defaults-conservadores">valores conservadores</a>.
         </p>
         <div class="table-responsive">
           <table class="table table-sm table-bordered align-middle">
@@ -284,17 +286,36 @@
                 <td><code>retryPolicyActive</code></td>
                 <td>Boolean</td>
                 <td>
-                  Si <code>true</code>, el Proxy aplica la política de reintentos hacia el downstream para esta <code>operacion</code> (en conjunto con <code>maxRetryAttempts</code> y el JSON <code>retryPolicy</code> del canal o futuro override por fila).
-                  Si <code>false</code> u omitido, comportamiento conservador: un único intento salvo reglas mínimas de red definidas por producto. Útil para distinguir notificaciones <code>0010</code>/<code>0020</code> de consultas idempotentes o de solo lectura.
-                  Ver <a href="business-value.html#estrategia-sync-async-fire-forget">Valor y justificación — §4.5</a>.
+                  <strong>Interruptor data-driven.</strong> Si <code>true</code>, el orquestador puede aplicar la máquina de reintentos de <strong>Capa 1</strong> (síncrona) según <a href="resilience-strategy.html#errores-reintentables">errores reintentables</a> y los límites <code>maxRetryAttempts</code> / <code>backoffRate</code>.
+                  Cuando el diseño de producto delega el trabajo a cola, la misma bandera (o reglas complementarias en datos) alinea la decisión hacia <strong>Capa 2</strong> (SQS + worker) — ver <a href="async-worker.html">Capa 2</a>.
+                  Si <code>false</code> u <strong>omitido</strong>: <strong>0 reintentos de negocio</strong> (un solo intento HTTP salvo lo que el código fije como mínimo técnico).
                 </td>
               </tr>
               <tr>
                 <td><code>maxRetryAttempts</code></td>
                 <td>Number</td>
                 <td>
-                  Tope de <strong>reintentos</strong> después del intento inicial (p. ej. <code>3</code> ⇒ hasta 4 contactos HTTP si todos son fallos reintentables). Debe acotarse al tiempo máximo de la Lambda o, en modo asíncrono, al presupuesto del worker/SQS.
-                  Si falta y <code>retryPolicyActive</code> es <code>true</code>, el implementador puede heredar <code>maxRetries</code> del documento <code>retryPolicy</code> en <code>tld-validador-canal</code>.
+                  Número de <strong>reintentos después del primer intento</strong>, acotado al rango recomendado <strong>0–3</strong> (p. ej. <code>3</code> ⇒ hasta cuatro contactos HTTP si todos fueran fallos reintentables).
+                  Debe dimensionarse con <code>operationTimeoutMs</code>, backoff y <code>context.getRemainingTimeInMillis()</code> — ver <a href="resilience-strategy.html">Estrategia Capa 1</a>.
+                  Si falta u omitido: tratar como <strong>0</strong> (conservador) aunque <code>retryPolicyActive</code> sea <code>true</code>, salvo fusión explícita con <code>retryPolicy</code> en <code>tld-validador-canal</code> acordada en <a href="resilience-config.html">Manual DynamoDB</a>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>backoffRate</code></td>
+                <td>Number</td>
+                <td>
+                  <strong>Factor multiplicador</strong> aplicado al calcular el retraso entre reintentos (sobre una base en ms proveniente del JSON <code>retryPolicy</code> del canal, p. ej. <code>baseDelayMs</code>, o de una constante de producto si el canal no define detalle).
+                  Ejemplo: base <code>500</code> ms y <code>backoffRate</code> <code>2</code> ⇒ segundas y terceras esperas 1&nbsp;s, 2&nbsp;s antes de normalizar con techo <code>maxDelayMs</code> del canal.
+                  Si <strong>omitido</strong>: usar factor <strong>1</strong> (solo jitter / política base del canal).
+                </td>
+              </tr>
+              <tr>
+                <td><code>operationTimeoutMs</code></td>
+                <td>Number</td>
+                <td>
+                  Tiempo máximo de lectura/conexión HTTP que <code>httpsClient</code> debe usar <strong>para esta operación y este banco</strong> (p. ej. Banco A <code>5000</code>, Banco B <code>10000</code>), en <strong>milisegundos</strong>.
+                  Este campo <strong>sustituye</strong> el modelo monolítico de variable de entorno <code>HTTP_READ_TIME_OUT</code> de los satélites legacy (<code>tld-api-p2m</code> / <code>tld-api-alias</code>): el proxy ya no depende de un único timeout global por Lambda para decidir el presupuesto hacia el validador.
+                  Si <strong>omitido</strong>: aplicar un <strong>default conservador</strong> en código (documentado en el repo del proxy) o, en transición, leer un fallback de variable de entorno solo hasta completar la migración de datos.
                 </td>
               </tr>
               <tr>
@@ -333,6 +354,12 @@
         <p class="small text-muted mb-0">
           <strong>Clave compuesta típica:</strong> <code>PK = idCanal</code>, <code>SK = operacion</code> (o un solo ítem por fila con ambos atributos según el patrón de acceso elegido en SAM).
         </p>
+        <div id="defaults-conservadores" class="alert alert-secondary small mt-4 mb-0" role="note">
+          <div class="fw-semibold mb-1">Valores conservadores si falta el dato en DynamoDB</div>
+          <p class="mb-0">
+            El proxy es <strong>data-driven</strong>: atributos ausentes o no parseables se interpretan de forma segura — típicamente <strong>sin reintentos</strong> (<code>maxRetryAttempts</code> efectivo 0, <code>retryPolicyActive</code> falso), <strong>backoffRate</strong> neutro (1) y <strong>timeout</strong> al default de implementación (o env de transición). Así un canal mal configurado no amplifica tráfico hacia el banco.
+          </p>
+        </div>
       </section>
 
       <section id="tabla-telemetry" class="mt-5">
@@ -668,7 +695,7 @@
       </div>
 
       <p class="small text-muted mt-4 mb-1">
-        <strong>Diccionario de datos</strong> — contrato v1. <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+        <strong>Diccionario de datos</strong> — contrato v1. <strong>Última actualización:</strong> <time datetime="2026-03-29">29 de marzo de 2026</time>.
       </p>
       <p class="text-muted small mb-0">
         Transporte: <a href="crypto-transport.html">Túnel TLS</a> · Orquestación: <a href="flow.html#orquestador-app">Flujo / <code>app.js</code></a> ·

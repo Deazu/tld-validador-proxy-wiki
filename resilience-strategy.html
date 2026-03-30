@@ -55,7 +55,7 @@
         </p>
         <h1 class="h2 mb-2">Sistema de Resiliencia — Estrategia y <strong>Capa 1</strong> (síncrona)</h1>
         <p class="lead text-muted mb-3">
-          La <strong>Capa 1</strong> materializa la <strong>Resiliencia Opt-in</strong> (bajo demanda) dentro de la misma invocación del API del Proxy: los reintentos solo existen si están declarados en datos; <em>nada es automático</em> sin filas y banderas coherentes en DynamoDB.
+          La <strong>Capa 1</strong> materializa la <strong>Resiliencia Opt-in</strong> (bajo demanda) dentro de la misma invocación <code>Invoke</code> del proxy: los reintentos solo existen si están declarados en datos; <em>nada es automático</em> sin filas y banderas coherentes en DynamoDB (<code>tld-validador-canal-operacion</code>).
           Es <strong>resiliencia controlada</strong> acotada al presupuesto temporal de la función y a la <strong>gestión de disponibilidad</strong> que negocio haya aprobado para esa operación (salvo reglas mínimas de producto documentadas aparte).
         </p>
 
@@ -64,6 +64,7 @@
           <ul class="mb-0">
             <li><a href="#filosofia-opt-in">Resiliencia Opt-in y filosofía</a></li>
             <li><a href="#https-client">El módulo <code>httpsClient</code></a></li>
+            <li><a href="#errores-reintentables">Clasificación de errores reintentables</a></li>
             <li><a href="#time-budget">Presupuesto temporal (<code>getRemainingTimeInMillis</code>)</a></li>
             <li><a href="#portero-mensajeria">Portero y mensajería certificada</a></li>
             <li><a href="#siguiente-capa">Enlace a Capa 2</a></li>
@@ -95,13 +96,33 @@
             Sobre ese transporte, la implementación prevista usa <strong>Axios</strong> como vehículo de petición, con <strong>interceptores</strong> que clasifican la respuesta o el fallo:
           </p>
           <ul class="small">
-            <li><strong>Respuestas HTTP 5xx</strong> del downstream (cuando el producto las marque como transitorias) pueden señalarse al orquestador como candidatas a reintento dentro de la Capa 1.</li>
+            <li><strong>Respuestas HTTP 5xx reintentables</strong> del validador (<code>500</code>, <code>502</code>, <code>503</code>, <code>504</code>) pueden señalarse al orquestador como candidatas a reintento dentro de la Capa 1 — lista canónica en <a href="#errores-reintentables">Clasificación de errores reintentables</a>.</li>
             <li><strong>Timeouts</strong> de socket o de lectura (códigos de error de Axios / capa red) se tratan como fallos transitorios acordes a la política declarada en datos, no como “errores opacos” repartidos entre librerías distintas.</li>
             <li><strong>4xx de contrato</strong>, errores de cifrado de aplicación o fallos de CRL / mTLS no deben disparar bucles de reintento: el <strong>portero</strong> ya tomó una decisión de seguridad o de forma del mensaje.</li>
           </ul>
           <p class="small text-muted mb-0">
             Transporte TLS detallado: <a href="connectivity-telered.html">Conectividad Telered y mTLS</a> ·
             Diagrama maestro: <a href="crypto-transport.html#diagrama-interaccion">Túnel de Confianza</a>.
+          </p>
+        </section>
+
+        <section id="errores-reintentables" class="mt-5">
+          <h2 class="h3 border-0 pb-0">Clasificación de errores reintentables</h2>
+          <p class="small">
+            La decisión de reintento en Capa 1 es <strong>data-driven</strong> (<code>retryPolicyActive</code>, <code>maxRetryAttempts</code>, etc. en <a href="data-dictionary.html#tabla-operacion"><code>tld-validador-canal-operacion</code></a>) y además debe cumplir esta <strong>matriz técnica</strong>: el orquestador <strong>solo</strong> considera un nuevo intento si <code>httpsClient</code> (o la capa que normalice el resultado) reporta un fallo clasificado como <em>transitorio</em> según las reglas siguientes.
+          </p>
+          <h3 class="h5 mt-3">Sí reintentar (cuando la política en DynamoDB lo autorice)</h3>
+          <ul class="small mb-3">
+            <li><strong>Respuestas HTTP del validador remoto:</strong> <code>500 Internal Server Error</code>, <code>502 Bad Gateway</code>, <code>503 Service Unavailable</code>, <code>504 Gateway Timeout</code>.</li>
+            <li><strong>Errores de red / socket</strong> típicos en Node (nombres estables para mapeo en código): <code>ETIMEDOUT</code>, <code>ECONNRESET</code>, <code>ECONNREFUSED</code> (y equivalentes que el cliente HTTP exponga de forma homogénea).</li>
+          </ul>
+          <h3 class="h5">Nunca reintentar (fallo inmediato; telemetría + matriz <code>PROXY_ERR_*</code>)</h3>
+          <ul class="small mb-0">
+            <li><strong>Errores de cliente / contrato / seguridad:</strong> códigos HTTP <code>400 Bad Request</code>, <code>401 Unauthorized</code>, <code>403 Forbidden</code>, <code>404 Not Found</code> — indican payload inválido, auth, autorización o recurso inexistente; repetir la llamada sin corregir datos <strong>no</strong> debe formar parte de la resiliencia del proxy.</li>
+            <li><strong>Fallos del portero</strong> (TLS, CRL, mTLS, certificado revocado): ya cubiertos fuera de esta matriz; no se tratan como “503 transitorio”.</li>
+          </ul>
+          <p class="small text-muted mt-3 mb-0">
+            Otros códigos (p. ej. <code>429</code>) quedan para decisión explícita de producto: si se añaden a la lista reintentable, documentarlos en el mismo apartado del diccionario y en el código de clasificación del <code>httpsClient</code>.
           </p>
         </section>
 
@@ -164,7 +185,7 @@
         </section>
 
         <p class="small text-muted mt-4 mb-1">
-          <strong>Documento:</strong> Sistema de Resiliencia — Capa 1. <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+          <strong>Documento:</strong> Sistema de Resiliencia — Capa 1. <strong>Última actualización:</strong> <time datetime="2026-03-29">29 de marzo de 2026</time>.
         </p>
       </div>
     </main>
