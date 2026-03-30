@@ -133,12 +133,12 @@
         <div class="wiki-section-eyebrow text-center">Corazón del sistema</div>
         <h2 class="h4 text-center mb-2">Secuencia maestra: orquestación + telemetría lateral</h2>
         <p class="small text-muted text-center mx-auto mb-3" style="max-width: 40rem;">
-          Cada fase crítica deja huella en <strong>Telemetría</strong> (DynamoDB): no bloquea el camino feliz si falla el <code>PutItem</code> (<a href="crypto-transport.html#fail-safe-telemetry">política fail-safe</a>), pero en condiciones normales reconstruyes el incidente como si leyeras la <strong>cinta negra</strong> junto al <strong>portero</strong>.
+          Cada fase crítica deja huella en <strong>Telemetría</strong> (DynamoDB): no bloquea el camino feliz si falla el <code>PutItem</code> (<a href="crypto-transport.html#fail-safe-telemetry">política fail-safe</a>), pero en condiciones normales reconstruyes el incidente como si leyeras la <strong>cinta negra</strong> junto al <strong>portero</strong>. El borde de entrada al proxy es <strong>invocación directa de Lambda</strong> (<code>lambda:InvokeFunction</code>), no API Gateway — ver <a href="infrastructure.html">Infraestructura SAM</a> y <a href="flow.html">Flujo General</a>.
         </p>
         <div class="wiki-mermaid-wrap shadow-sm mb-3 wiki-diagram-heart">
           <pre class="mermaid">sequenceDiagram
     autonumber
-    participant Inv as Invocacion
+    participant Orig as Origen_SDK_Invoke
     participant Log as Logger
     participant Idn as IdentityManager
     participant Op as OperacionesPaquete
@@ -146,7 +146,7 @@
     participant Tel as Telemetria_emit
     participant Rem as Endpoint_validador
 
-    Inv->>Log: evento y contexto
+    Orig->>Log: evento y contexto
     Log->>Tel: emit Logger meta
     Log->>Idn: resolveChannel DynamoDB
     Idn->>Tel: emit Identity fase
@@ -167,7 +167,7 @@
       Htt-->>Op: error controlado
     end
     Op-->>Log: abrir paquete o error
-    Log-->>Inv: respuesta API</pre>
+    Log-->>Orig: payload retorno Invoke</pre>
         </div>
         <p class="small mx-auto mb-5" style="max-width: 42rem;">
           La Lambda actúa como <strong>director de orquesta</strong>: <code>IdentityManager</code> sustituye el legado de <code>canal.js</code> con lecturas <code>GetItem</code>/GSI y DTO congelado (nadie reescribe el <strong>pasaporte</strong> a mitad del control); <code>httpsClient</code> concentra el <strong>portero</strong> de <strong>Conectividad Segura (TLS / mTLS)</strong>, la CRL y el <strong>doble pasaporte TLS / mTLS</strong>: el validador prueba su identidad hacia nosotros y, cuando el perfil del canal lo exige, nosotros presentamos <strong>certificado de cliente</strong> hacia él. Entre ambos, <code>OperacionesPaquete</code> llena las <strong>cubetas</strong> de cifrado de aplicación antes de que un solo byte sensible cruce el cable hacia el validador.

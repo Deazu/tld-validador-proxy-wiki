@@ -108,8 +108,8 @@
         <section id="time-budget" class="mt-5">
           <h2 class="h3 border-0 pb-0">Presupuesto temporal: <code>context.getRemainingTimeInMillis()</code></h2>
           <p>
-            La Lambda de AWS tiene un <strong>tope duro de duración</strong>. El cliente que invoca al Proxy (API Gateway, otra Lambda, cola) suele tener <em>otro</em> tope más corto.
-            Si el orquestador duerme en backoff sin mirar el reloj, el síntoma visible es un <strong>timeout del cliente</strong> mientras el proceso aún “vivo” en AWS podría seguir unos milisegundos más — peor aún, el originador puede asumir fallo y repetir, generando <strong>doble envío</strong>.
+            La Lambda de AWS tiene un <strong>tope duro de duración</strong> configurado en la función. Quien invoca al Proxy con <strong><code>lambda:InvokeFunction</code></strong> debe además fijar el <strong>timeout del cliente AWS SDK</strong> (y política de reintentos de red del SDK, distinta de la resiliencia de negocio del proxy): si el SDK corta antes que la función termine, el síntoma es fallo en el llamador aunque la Lambda siga ejecutándose unos instantes — riesgo de <strong>doble envío</strong> si el originador reintenta sin idempotencia.
+            Si el orquestador duerme en backoff sin mirar <code>getRemainingTimeInMillis</code>, se agota el presupuesto <em>dentro</em> de la Lambda antes de tiempo.
           </p>
           <p>
             La Capa 1, antes de cada <strong>espera</strong> o <strong>nuevo intento</strong> HTTP, consulta el tiempo restante del contenedor mediante <code>context.getRemainingTimeInMillis()</code> (o equivalente inyectado en el handler).
@@ -132,7 +132,7 @@
     I -->|No y agotados| K[HTTP_Retry_Exhausted u homologo]</pre>
           </div>
           <p class="small text-muted mb-0">
-            La <strong>Capa 2</strong> (SQS + worker) alarga el horizonte temporal sin mantener abierta la invocación del API: ver <a href="async-worker.html">Arquitectura SQS y Capa 2</a>.
+            La <strong>Capa 2</strong> (SQS + worker) alarga el horizonte temporal sin mantener abierta la invocación <code>Invoke</code> del proxy (respuesta con <strong>202 lógico</strong> en payload cuando aplique): ver <a href="async-worker.html">Arquitectura SQS y Capa 2</a>.
           </p>
         </section>
 

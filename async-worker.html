@@ -55,14 +55,14 @@
         <h1 class="h2 mb-2">Sistema de Resiliencia — <strong>Capa 2</strong> (asíncrona: SQS y worker)</h1>
         <p class="lead text-muted mb-3">
           La <strong>Capa 2</strong> extiende la <strong>Resiliencia Opt-in</strong> al plano asíncrono: el modo cola + worker <em>tampoco es automático</em>; debe estar definido en el modelo de datos, en plantilla SAM y en la operación del canal antes de aceptar <code>202</code> y publicar en SQS.
-          Cuando así se habilita y el SLA del banco o los límites de API Gateway aconsejan desacoplar, el Proxy deposita el trabajo en <strong>Amazon SQS</strong> y un <strong>Lambda Worker</strong> independiente completa la <strong>gestión de disponibilidad</strong> con la misma disciplina de transporte TLS / mTLS que la Capa 1.
+          Cuando así se habilita y el SLA del banco o los <strong>timeouts del SDK del llamador</strong> aconsejan desacoplar (sin esperar todo el backoff en una sola <code>Invoke</code>), el handler del proxy deposita el trabajo en <strong>Amazon SQS</strong> y un <strong>Lambda Worker</strong> independiente completa la <strong>gestión de disponibilidad</strong> con la misma disciplina de transporte TLS / mTLS que la Capa 1.
         </p>
 
         <nav class="wiki-inpage-toc small mb-4" aria-label="En esta página">
           <div class="fw-semibold mb-2">En esta página</div>
           <ul class="mb-0">
             <li><a href="#flujo-0010-0020">Notificaciones <code>0010</code> / <code>0020</code> y el buffer SQS</a></li>
-            <li><a href="#http-202">HTTP 202 Accepted y desacoplamiento</a></li>
+            <li><a href="#http-202">Aceptación lógica 202 en el payload de retorno</a></li>
             <li><a href="#lambda-worker">Lambda Worker y <code>httpsClient</code></a></li>
             <li><a href="#sin-recursion">Sin invocaciones recursivas entre Lambdas</a></li>
           </ul>
@@ -72,7 +72,7 @@
           <h2 class="h3 border-0 pb-0">Flujo de notificaciones (<code>0010</code>, <code>0020</code>) y <strong>Amazon SQS</strong></h2>
           <p>
             Los métodos de negocio que hoy representan notificación hacia validador — en la familia de <strong>Alias</strong> (<code>0010</code>) y <strong>P2M</strong> (<code>0020</code>) — son candidatos naturales a la Capa 2 cuando se elige modo asíncrono en datos.
-            El mensaje que sale del API del Proxy no va “directo al vacío”: se serializa como trabajo idempotente (identificadores de correlación, metadatos de canal, huella del payload ya cifrado o referencia según diseño) y se publica en una cola SQS dedicada al dominio del Proxy.
+            Tras la <code>Invoke</code> al handler del proxy, el mensaje de trabajo no va “directo al vacío”: se serializa como carga idempotente (identificadores de correlación, metadatos de canal, huella del payload ya cifrado o referencia según diseño) y se publica en una cola SQS dedicada al dominio del Proxy.
           </p>
           <p>
             <strong>SQS actúa como buffer de presión:</strong> absorbe picos cuando muchas Lambdas satélite disparan notificaciones a la vez; retiene el trabajo si el validador remoto está en mantenimiento; y permite políticas de DLQ para análisis forense sin perder el rastro del intento.
@@ -81,21 +81,20 @@
         </section>
 
         <section id="http-202" class="mt-5">
-          <h2 class="h3 border-0 pb-0"><strong>HTTP 202 Accepted</strong> — liberar al cliente al instante</h2>
+          <h2 class="h3 border-0 pb-0">Aceptación lógica <strong>202</strong> — en el payload de retorno de la Lambda</h2>
           <p>
-            En modo asíncrono, la función del API Gateway responde <strong>202 Accepted</strong> en cuanto el trabajo queda <em>comprometido</em> de forma durable: típicamente tras <code>SendMessage</code> exitoso a SQS (o equivalente transaccional que el equipo defina).
-            El cuerpo de la respuesta incluye un <code>correlationId</code> / <code>requestId</code> estable para trazabilidad; no promete que el banco ya haya acusado recibo.
+            Sin API Gateway no existe la cabecera HTTP <code>202 Accepted</code>. En modo asíncrono, el handler del proxy devuelve en el <strong>objeto de respuesta de la invocación</strong> (serializado como JSON en el resultado de <code>Invoke</code>) un contrato que <em>equivale semánticamente</em> a 202: p. ej. <code>{ "status": 202, "correlationId": "...", "accepted": true }</code> o el esquema que fije el equipo, en cuanto el trabajo queda <em>comprometido</em> de forma durable — típicamente tras <code>SendMessage</code> exitoso a SQS.
+            Ese payload no implica que el banco haya acusado recibo; solo que el proxy asumió el encargo en cola.
           </p>
           <p>
-            Ese contrato desacopla la <strong>latencia percibida</strong> del originador (<code>inactividad</code>, <code>alias</code>, <code>p2m</code>) de la <strong>latencia real</strong> del downstream, que puede incluir varios ciclos de backoff y minutos de ventana de indisponibilidad.
-            El cliente deja de ser rehén del timeout de su propia Lambda o del API interno.
+            Así se desacopla la <strong>latencia percibida</strong> del originador (<code>inactividad</code>, <code>alias</code>, <code>p2m</code>) de la <strong>latencia real</strong> del downstream. El llamador controla cuánto espera mediante el <strong>timeout del cliente AWS SDK</strong> en su propia Lambda; la invocación al proxy puede durar solo lo necesario para validar, cifrar si aplica y encolar.
           </p>
         </section>
 
         <section id="lambda-worker" class="mt-5">
           <h2 class="h3 border-0 pb-0">Lambda Worker: mismo <code>httpsClient</code>, backoff exponencial</h2>
           <p>
-            El <strong>Worker</strong> es una función Lambda (o conjunto de funciones) distinta del handler síncrono del API: su evento de entrada es el mensaje SQS, no el JSON público del Gateway.
+            El <strong>Worker</strong> es una función Lambda distinta del handler invocado por SDK: su evento de entrada es el mensaje SQS, no el payload directo del llamador satélite.
             Su responsabilidad es reconstruir el contexto mínimo (canal, operación, payload), reutilizar <strong>exactamente el mismo módulo <code>httpsClient.js</code></strong> que la Capa 1 y ejecutar la política de reintentos con <strong>exponential backoff</strong> y jitter entre intentos.
           </p>
           <p>
@@ -105,17 +104,17 @@
           <div class="wiki-mermaid-wrap shadow-sm mb-3">
             <pre class="mermaid">sequenceDiagram
     autonumber
-    participant Cli as Cliente_interno
-    participant Api as Proxy_API_Lambda
+    participant Orig as Origen_Lambda_SDK
+    participant Api as Proxy_Lambda_handler
     participant Q as Amazon_SQS
     participant W as Proxy_Worker_Lambda
     participant H as httpsClient
     participant B as Validador_remoto
 
-    Cli->>Api: POST notificacion metodo 0010 o 0020
+    Orig->>Api: Lambda_Invoke notificacion 0010 o 0020
     Api->>Q: SendMessage payload idempotente
     Q-->>Api: OK
-    Api-->>Cli: 202 Accepted correlationId
+    Api-->>Orig: Payload JSON status_202_logico correlationId
     Q->>W: evento batch mensajes
     W->>H: requestSecure intento 1
     H->>B: HTTPS POST cifrado

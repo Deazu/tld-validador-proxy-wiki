@@ -200,7 +200,7 @@
         </div>
         <h4 class="h6 mt-3">Lectura de cada tramo (seguridad, no solo orden de llamadas)</h4>
         <ol class="small">
-          <li><strong>Cliente → Handler:</strong> entrada por API Gateway u orígen equivalente. Aún no existe el socket TLS hacia el validador; solo validamos el evento y correlación.</li>
+          <li><strong>Cliente → Handler:</strong> entrada por <strong><code>lambda:InvokeFunction</code></strong> (payload JSON del evento). Aún no existe el socket TLS hacia el validador; solo validamos el evento y correlación.</li>
           <li><strong>Handler → Logger:</strong> evita fugas por logs (equivalente a controlar qué grita el operador en una sala acotada).</li>
           <li><strong>Handler → Canal (DynamoDB):</strong> resuelve <em>quién</em> es el validador en red (URL) y <em>con qué claves y modo</em> debe cifrarse el mensaje de aplicación.</li>
           <li><strong>Handler → OperacionesPaquete:</strong> cifrado híbrido de negocio; el transporte TLS aún no sustituye esto: son capas que se suman.</li>
@@ -879,7 +879,7 @@ module.exports = { requestSecure, getAgent };
         </ul>
         <h4 class="h6 text-secondary mt-4">Notas de producción / cierre de la sección de código</h4>
         <p class="small mb-0">
-          Los cuatro archivos forman un “tubo” de responsabilidades: errores tipados, trazas, revocación y socket TLS. Antes de modificar uno, el equipo debería preguntarse qué capa posee el nuevo comportamiento para no mezclar política PKI con telemetría o con el handler HTTP de API Gateway.
+          Los cuatro archivos forman un “tubo” de responsabilidades: errores tipados, trazas, revocación y socket TLS. Antes de modificar uno, el equipo debería preguntarse qué capa posee el nuevo comportamiento para no mezclar política PKI con telemetría o con el contrato del <strong>handler Lambda</strong> (payload de invocación / respuesta).
         </p>
       </section>
 
@@ -1103,8 +1103,8 @@ module.exports = { requestSecure, getAgent };
         </div>
         <h4 class="h6 text-secondary">Notas de producción / mejores prácticas adicionales</h4>
         <ul class="small mb-0">
-          <li>Threat modeling anual del proxy: superficie de red, EFS, DynamoDB de telemetría, API Gateway.</li>
-          <li>Encriptación en tránsito entre API Gateway → Lambda y Lambda → endpoint remoto revisada en diagramas de arquitectura.</li>
+          <li>Threat modeling anual del proxy: superficie de red, EFS, DynamoDB de telemetría, permisos <code>lambda:InvokeFunction</code> y roles IAM de llamadores.</li>
+          <li>Encriptación en tránsito entre llamador → Lambda (TLS de la API de AWS) y Lambda → endpoint remoto revisada en diagramas de arquitectura.</li>
         </ul>
       </section>
 
@@ -1140,7 +1140,7 @@ module.exports = { requestSecure, getAgent };
         <ul class="small">
           <li><strong>OCSP stapling</strong> en el servidor remoto para aliviar dependencia de CRL grande (el cliente seguiría validando política según lo acordado).</li>
           <li><strong>mTLS</strong> si el endpoint exige certificado de cliente; requiere gestión de claves y rotación en EFS o Secrets Manager.</li>
-          <li><strong>Rate limiting</strong> en API Gateway o WAF delante del proxy para contener abusos.</li>
+          <li><strong>Rate limiting / cuotas</strong> en el llamador, alarmas de concurrencia Lambda y políticas IAM acotadas para contener abusos sin depender de API Gateway en el borde del proxy.</li>
           <li><strong>Pinning de SPKI</strong> solo en casos excepcionales (coste operativo alto de rotación).</li>
           <li><strong>Tests de contrato</strong> opcionales en pipeline (mock TLS) solo si el equipo los mantiene; el <strong>contrato de aceptación</strong> sigue siendo prueba contra endpoints y tablas reales en AWS, como en <a href="flow.html#estrategia-validacion">Flujo General</a>.</li>
         </ul>

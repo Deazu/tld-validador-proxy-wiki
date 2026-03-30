@@ -63,8 +63,7 @@
 
         <h1 class="h2 mb-3">Flujo General</h1>
         <p class="lead text-muted">
-          Ciclo de vida de una petición al <code>tld-validador-proxy</code>: desde el cliente interno hasta el endpoint remoto del validador,
-          pasando por sanitización de logs, resolución de canal en DynamoDB, cifrado híbrido y túnel TLS con política de confianza (CA/CRL).
+          Ciclo de vida de una petición al <code>tld-validador-proxy</code>: el borde es <strong>invocación directa de Lambda</strong> (<code>lambda:InvokeFunction</code> vía AWS SDK desde otra Lambda o servicio autorizado), no API Gateway. A partir del payload del evento, el handler orquesta logs, DynamoDB, cifrado híbrido y túnel TLS / mTLS hacia el validador. El <strong>timeout del llamador</strong> lo controla la configuración del cliente SDK además del <code>Timeout</code> de la función proxy.
         </p>
 
         <section id="diagrama-secuencia" class="mt-4">
@@ -75,15 +74,15 @@
           <div class="wiki-mermaid-wrap shadow-sm">
             <pre class="mermaid">sequenceDiagram
     autonumber
-    participant Client as "Cliente interno"
-    participant Handler as "Proxy Handler"
-    participant Log as "Logger sanitize"
-    participant Canal as "Canal DynamoDB"
+    participant Orig as Origen_Lambda_SDK
+    participant Handler as Proxy_Handler
+    participant Log as Logger_sanitize
+    participant Canal as Canal_DynamoDB
     participant Crypto as OperacionesPaquete
     participant Http as HttpClient
-    participant Target as "Remote endpoint"
+    participant Target as Remote_endpoint
 
-    Client->>+Handler: POST idCanalValidador metodo dataPlana
+    Orig->>+Handler: Lambda_Invoke payload JSON negocio
     Handler->>+Log: Print meta sanitizada
     Note right of Log: PRINT_LOGS on y DENY_KEYS
     Log-->>-Handler: ok
@@ -98,7 +97,7 @@
     Http->>+Target: HTTPS POST
     Target-->>-Http: respuesta
     Http-->>-Handler: status y body
-    Handler-->>-Client: respuesta HTTP API</pre>
+    Handler-->>-Orig: Payload retorno JSON contrato interno</pre>
           </div>
           <h3 class="h5 mt-4" id="diagrama-secuencia-reintentos">Escenario: fallo transitorio en el downstream y política de reintentos</h3>
           <p class="small text-muted">
@@ -114,7 +113,7 @@
     participant Http as HttpClient
     participant Target as Validador_downstream
 
-    Orig->>Handler: POST idCanal metodo dataPlana
+    Orig->>Handler: Lambda_Invoke idCanal metodo dataPlana
     Handler->>Canal: GetItem canalDto
     Canal-->>Handler: urlValidador y retryPolicy JSON
     Note over Handler: cifrado app y TLS omitidos aqui por brevedad
@@ -128,39 +127,41 @@
     alt Reintento exitoso
         Target-->>Http: 200 OK
         Http-->>Handler: body respuesta
-        Handler-->>Orig: 200 API sin error definitivo
+        Handler-->>Orig: payload OK sincrono negocio
     else Agotados maxRetries
         Http-->>Handler: ultimo fallo
-        Handler-->>Orig: error HTTP y PROXY_ERR mapeado
+        Handler-->>Orig: payload error PROXY_ERR mapeado
     end</pre>
           </div>
           <p class="small text-muted mb-0">
             Estrategia OPT-IN y <code>httpsClient</code>: <a href="resilience-strategy.html">Resiliencia — Capa 1</a> · contexto de negocio y auditoría: <a href="business-value.html#resiliencia-notificaciones">Valor y justificación — §4</a>.
           </p>
 
-          <h3 class="h5 mt-4" id="diagrama-notificacion-asincrona">Notificación asíncrona: 202 Accepted, cola interna y backoff hacia el banco</h3>
+          <h3 class="h5 mt-4" id="diagrama-notificacion-asincrona">Modo asíncrono: aceptación lógica <code>202</code> en el payload de retorno</h3>
           <p class="small text-muted">
-            Variante de <strong>resiliencia inteligente</strong> para operaciones de notificación: el Proxy <strong>libera al cliente</strong> al aceptar el trabajo y asume reintentos sin mantener abierta la invocación del originador (<code>inactividad</code>, <code>alias</code>, <code>p2m</code>).
-            El recuadro lógico “Cola” representa SQS, Step Functions o un dispatcher interno; el diagrama simplifica a un único flujo de worker.
+            Sin API Gateway no hay cabecera HTTP <code>202 Accepted</code>: el contrato es el <strong>cuerpo JSON que devuelve la Lambda</strong> al completar la fase síncrona mínima (p. ej. tras <code>SendMessage</code> exitoso a SQS). El handler retorna un objeto con <strong>status lógico 202</strong> (campo acordado, p. ej. <code>httpStatus: 202</code> o <code>modo: async_accepted</code>), <code>correlationId</code> y metadatos; el llamador interpreta que el trabajo quedó encolado y puede cerrar su invocación sin esperar al banco.
+            Reintentos hacia el validador ocurren en el <strong>worker</strong> (otra Lambda disparada por SQS), no en la invocación del proxy.
           </p>
           <div class="wiki-mermaid-wrap shadow-sm">
             <pre class="mermaid">sequenceDiagram
     autonumber
-    participant Cli as Cliente_interno
-    participant Prox as Proxy_Lambda
-    participant Cola as Cola_SQS_o_worker
+    participant Orig as Origen_Lambda_SDK
+    participant Prox as Proxy_Lambda_handler
+    participant Cola as Cola_SQS
+    participant W as Worker_Lambda
     participant Ban as Banco_validador
 
-    Cli->>Prox: Enviar notificacion metodo payload
-    Prox-->>Cli: 202 Accepted correlationId
-    Prox->>Cola: encolar trabajo idempotente
-    Cola->>Prox: disparar procesamiento
-    Prox->>Ban: intento 1 HTTPS notificacion
-    Ban-->>Prox: fallo transitorio
-    Prox->>Prox: espera exponential backoff
-    Prox->>Ban: intento 2 HTTPS notificacion
-    Ban-->>Prox: 200 OK exito
-    Note over Prox: telemetria por intento sin bloquear al Cli</pre>
+    Orig->>Prox: Lambda_Invoke notificacion metodo payload
+    Prox->>Cola: SendMessage trabajo idempotente
+    Cola-->>Prox: OK
+    Prox-->>Orig: Payload JSON status_logico_202 correlationId
+    Cola->>W: evento batch mensajes
+    W->>Ban: intento 1 HTTPS notificacion
+    Ban-->>W: fallo transitorio
+    W->>W: espera exponential backoff
+    W->>Ban: intento 2 HTTPS notificacion
+    Ban-->>W: 200 OK exito
+    Note over W: telemetria por intento sin bloquear a Orig</pre>
           </div>
           <p class="small text-muted mb-0">
             SQS, 202 y worker: <a href="async-worker.html">Resiliencia — Capa 2</a> · configuración en tabla: <a href="resilience-config.html">Manual DynamoDB</a> · trade-offs de producto: <a href="business-value.html#estrategia-sync-async-fire-forget">Valor y justificación — §4.5</a>.
@@ -180,14 +181,14 @@
           </p>
           <h3 class="h5 mt-3">Pseudo-código detallado (orden estricto de ejecución)</h3>
           <pre class="bg-light border rounded p-3 small mb-3"><code>FUNCTION handler(event, context):
-  correlationId ← event.headers['x-correlation-id'] OR generar UUID
+  correlationId ← event.correlationId OR generar UUID
   telemetry.emit({ correlationId, phase: 'Handler_Start', outcome: 'OK' })
 
   // 1) Sanitización temprana — nunca loguear secretos crudos
   logger.Print('[proxy] evento recibido', sanitize(event))
   SI validación de forma del evento falla:
      telemetry.emit({ correlationId, phase: 'Validation', outcome: 'FAIL', detail: { internalCode: 'PROXY_ERR_VAL_001' } })
-     RETORNAR response HTTP 400 con cuerpo genérico
+     RETORNAR payload JSON error validacion mapeado a contrato interno
 
   // 2) Identidad del canal (DynamoDB) — antes de cifrar o abrir TLS
   TRY:
@@ -245,8 +246,11 @@
      RETORNAR mapear PROXY_ERR_NET_* o código HTTP coherente al originador (p. ej. inactividad)
   OPCIONAL post-loop: SI canalDto.fallbackEndpoint y política de producto lo permite, un último intento acotado al fallback
 
-  // 5) Respuesta al cliente interno
-  RETORNAR 200 con cuerpo según contrato API Gateway</code></pre>
+  // 5) Respuesta al llamador (Invoke) — objeto serializado en Lambda response
+  SI modo_asincrono_y_encolado_OK:
+     RETORNAR { status: 202, correlationId, ... } segun contrato acordado
+  SINO
+     RETORNAR { status: 200, cuerpo negocio } o error mapeado PROXY_ERR_*</code></pre>
           <h3 class="h5 mt-4">Contrato de datos entre piezas (qué se pasa de un módulo al siguiente)</h3>
           <p class="small">
             Cada etapa consume un producto claro de la anterior; así se evita que el <strong>portero</strong> (TLS) reciba algo que no sea ya el “sobre” correcto, y las <strong>cubetas</strong> (<code>Buffer</code>) solo se llenan donde el transporte las necesita (respuesta HTTP, lectura PEM en disco).
@@ -263,8 +267,8 @@
               <tbody>
                 <tr>
                   <td>Entrada</td>
-                  <td>API Gateway / cliente → <code>handler</code></td>
-                  <td>Evento JSON: <code>idCanalValidador</code> (id o alias), <code>metodo</code>, <code>dataPlana</code>; cabeceras opcionales (<code>x-correlation-id</code>). Sin modo AES ni rutas de llave en claro.</td>
+                  <td><code>lambda:InvokeFunction</code> (SDK) → <code>handler</code></td>
+                  <td>Payload JSON del evento: <code>idCanalValidador</code> (id o alias), <code>metodo</code>, <code>dataPlana</code>; <code>correlationId</code> opcional en el cuerpo. Sin modo AES ni rutas de llave en claro. El <strong>timeout de espera</strong> del llamador lo fija el <strong>cliente AWS SDK</strong> además del <code>Timeout</code> de la Lambda proxy.</td>
                 </tr>
                 <tr>
                   <td>Identidad</td>
@@ -297,10 +301,10 @@
         <section id="paso-a-paso" class="mt-5">
           <h2 class="h4">Explicación exhaustiva por participante</h2>
 
-          <h3 class="h5 mt-4">1. Cliente → Proxy Handler</h3>
+          <h3 class="h5 mt-4">1. Origen (SDK) → Proxy Handler</h3>
           <p>
-            El invocador entrega identificadores de negocio y <code>dataPlana</code>; <strong>no</strong> envía el modo AES ni rutas de llaves.
-            El handler valida forma del evento, genera o propaga <code>correlationId</code> y prepara la orquestación.
+            Otra Lambda o proceso autorizado invoca con <code>InvokeCommand</code> (o equivalente): payload con identificadores de negocio y <code>dataPlana</code>; <strong>no</strong> se envía modo AES ni rutas de llaves en claro.
+            El handler valida forma del evento, genera o propaga <code>correlationId</code> y prepara la orquestación. Quien llama debe configurar el <strong>timeout del cliente SDK</strong> acorde al peor caso de Capa 1 (reintentos Opt-in + presupuesto Lambda).
           </p>
 
           <h3 class="h5 mt-4">2. Logger (<code>Print</code> / <code>sanitize</code>)</h3>
@@ -352,7 +356,7 @@
             <li><strong>Lambda → Test:</strong> en la consola de Lambda, pestaña <em>Test</em>, crear un evento de ejemplo alineado con <a href="identity.html#ejemplo-evento">Identidad / ejemplo de evento</a>; ejecutar y revisar la respuesta HTTP mapeada (400/403/404/502/504 según <a href="data-dictionary.html#matriz-errores">matriz <code>PROXY_ERR_*</code></a>).</li>
             <li><strong>CloudWatch Logs:</strong> confirmar que <code>logger.Print</code> solo muestra metadatos sanitizados (<code>PRINT_LOGS</code> según política) y que no aparecen PEM, passphrases ni cuerpos completos.</li>
             <li><strong>Tabla de telemetría:</strong> en <code>tld-validador-proxy-telemetry</code>, filtrar por <code>correlationId</code> (o GSI forense) y comprobar la secuencia de <code>phase</code> hasta <code>HTTP_Response</code> o <code>FAIL</code> con <code>detail.internalCode</code>.</li>
-            <li><strong>API Gateway:</strong> si el borde es HTTP API o REST, usar la acción <em>Test</em> del método o un cliente interno autorizado hacia la URL de etapa; validar que el timeout del API no corta antes que el del validador remoto.</li>
+            <li><strong>Invocación:</strong> probar con consola Lambda (<em>Test</em>) o desde una Lambda satélite de laboratorio con rol que tenga <code>lambda:InvokeFunction</code>; validar que el <strong>timeout del cliente SDK</strong> y el de la función proxy cubren el escenario de resiliencia controlada sin cortar antes que el validador remoto.</li>
             <li><strong>EFS / PKI:</strong> desde un bastión o Lambda de diagnóstico en la misma VPC, comprobar que los archivos referenciados por <code>LIB_RUTA_*</code> y por rutas del canal existen y son legibles por el rol de ejecución.</li>
           </ol>
           <h3 class="h5 mt-3">Canales dummy y validadores reales</h3>

@@ -95,20 +95,20 @@
           <h2 class="h3 border-0 pb-0">Cómo calcular <code>maxRetryAttempts</code> con el SLA del banco</h2>
           <p>
             <code>maxRetryAttempts</code> es el número de <strong>reintentos después del primer intento</strong> (si vale <code>3</code>, hay hasta cuatro contactos HTTP si todos fallan de forma reintentable).
-            Debe caber dentro de dos límites simultáneos: el <strong>timeout de la Lambda</strong> del API (Capa 1) o el <strong>presupuesto del worker</strong> (Capa 2), y el <strong>SLA de respuesta</strong> que el originador pueda esperar en modo síncrono.
+            Debe caber dentro de dos límites simultáneos: el <strong>timeout de la Lambda</strong> del proxy (Capa 1) y el <strong>timeout del cliente AWS SDK</strong> en quien invoca, o el <strong>presupuesto del worker</strong> (Capa 2), y el <strong>SLA de respuesta</strong> que el originador pueda esperar en modo síncrono.
           </p>
           <p>
             <strong>Método práctico:</strong>
           </p>
           <ol class="small">
-            <li>Fija <code>T_cliente_max</code> = tiempo máximo aceptable que el llamador puede bloquearse (p. ej. 25&nbsp;s si API Gateway corta a 29&nbsp;s).</li>
+            <li>Fija <code>T_cliente_max</code> = tiempo máximo aceptable que el llamador puede bloquearse en su <code>Invoke</code> (p. ej. 25&nbsp;s si el SDK del satélite tiene <code>clientConfig.requestTimeout</code> / equivalente en ~30&nbsp;s y quieres margen antes del tope de la Lambda proxy).</li>
             <li>Reserva <code>T_margen</code> para serializar respuesta, logs y telemetría (p. ej. 2–3&nbsp;s) y <code>T_request</code> estimado por ida y vuelta HTTP al validador (p. ej. 4&nbsp;s peor caso).</li>
             <li>Para cada intento previsto, estima <code>T_backoff(k)</code> como el retardo antes del intento <code>k</code> (backoff exponencial con techo <code>maxDelayMs</code> del JSON de política).</li>
             <li>Encuentra el mayor <code>N</code> tal que <code>Σ<sub>k=0..N</sub> T_request + Σ<sub>k=1..N</sub> T_backoff(k) ≤ T_cliente_max - T_margen</code>.</li>
             <li>Define <code>maxRetryAttempts = N</code> (reintentos tras el primero) o ajusta a la baja si el banco pide no más de <em>K</em> contactos en ventana de incidente.</li>
           </ol>
           <p class="small text-muted mb-0">
-            En <strong>modo 202 + SQS</strong>, el cálculo se relaja para el API (solo debe alcanzar a encolar), pero el worker sigue necesitando un tope coherente con DLQ y alarmas. Ver <a href="async-worker.html">Capa 2</a>.
+            En <strong>modo 202 lógico + SQS</strong>, el cálculo se relaja para la invocación al handler del proxy (solo debe alcanzar a encolar y devolver payload), pero el worker sigue necesitando un tope coherente con DLQ y alarmas. Ver <a href="async-worker.html">Capa 2</a>.
           </p>
         </section>
 

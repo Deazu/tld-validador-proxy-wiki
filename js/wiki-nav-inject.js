@@ -189,7 +189,7 @@
       linkSub("data-dictionary.html#matriz-errores", "Matriz de errores (PROXY_ERR_*)") +
       linkSub("data-dictionary.html#tabla-canal", "Modelo de datos de canal") +
       linkMain("network.html", "📋", "Red (samconfig)", "Parámetros de red y entorno") +
-      linkMain("infrastructure.html", "🏗️", "Infraestructura SAM", "SQS, DLQ, IAM granular, EFS") +
+      linkMain("infrastructure.html", "🏗️", "Infraestructura SAM", "Invoke SDK, SQS, DLQ, EFS") +
       linkMain("deployment.html", "📄", "Despliegue (template)", "SAM mínimo / referencia");
 
     return (

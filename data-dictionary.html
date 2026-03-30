@@ -355,7 +355,7 @@
               <tr>
                 <td><code>correlationId</code></td>
                 <td>String</td>
-                <td>Identificador único de la petición end-to-end (API Gateway → proxy → validador). Ejemplo: UUID v4 o id generado en el borde. Todas las filas de una misma invocación comparten este valor en consultas forenses.</td>
+                <td>Identificador único de la petición end-to-end (llamador SDK → <code>lambda:InvokeFunction</code> → handler proxy → validador). Ejemplo: UUID v4 o id generado en el payload del evento. Todas las filas de una misma invocación comparten este valor en consultas forenses.</td>
                 <td class="small">Purgado con el ítem: <strong>30 días</strong> vía atributo <code>expiresAt</code> (estándar de tabla; ver fila <code>expiresAt</code>).</td>
               </tr>
               <tr>
@@ -448,7 +448,7 @@
       <section id="restricciones-formato" class="mt-5">
         <h2 class="h3 border-0 pb-0">5. Restricciones de formato y longitud (validación en borde)</h2>
         <p class="small">
-          La Lambda debe rechazar datos mal formados <strong>antes</strong> de DynamoDB o TLS. Los límites siguientes son contrato de ingeniería; ajústalos en esquema JSON del API si usas validación en API Gateway.
+          La Lambda debe rechazar datos mal formados <strong>antes</strong> de DynamoDB o TLS. Los límites siguientes son contrato de ingeniería; ajústalos en el esquema JSON del <strong>payload de invocación</strong> (validación en el handler o capa compartida del llamador).
         </p>
         <div class="table-responsive">
           <table class="table table-sm table-bordered align-middle">
@@ -579,7 +579,7 @@
           </table>
         </div>
         <p class="small text-muted mb-0">
-          Mapeo exacto HTTP puede variar si API Gateway transforma cuerpos; mantener tabla en SAM/README alineada a esta matriz.
+          Los códigos de la columna «HTTP al cliente» son la <strong>semántica lógica</strong> expuesta en el JSON de retorno de la invocación (p. ej. <code>statusCode</code> o <code>httpStatus</code> acordado), no cabeceras HTTP de API Gateway. Mantener tabla en SAM/README alineada a esta matriz.
         </p>
       </section>
 

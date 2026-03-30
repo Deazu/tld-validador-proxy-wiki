@@ -84,7 +84,7 @@
           <li><strong>VpcConfig:</strong> mismos <code>SecurityGroupIds</code> y <code>SubnetIds</code> que el servicio hermano en cada ambiente (valores inyectados vía <code>samconfig.toml</code>).</li>
           <li><strong>FileSystemConfigs:</strong> ARN del access point de EFS y <code>LocalMountPath: /mnt/tld-llaves</code>.</li>
           <li><strong>IAM:</strong> lectura (y si aplica escritura acotada) sobre tablas <code>tld-validador-canal</code>, <code>tld-validador-canal-llave</code>, <code>tld-validador-canal-operacion</code> y similares; <code>kms:Encrypt</code> / <code>kms:Decrypt</code> sobre la clave indicada; <code>dynamodb:PutItem</code> (o document API) sobre la tabla de telemetría; permisos EFS para montaje.</li>
-          <li><strong>API privada</strong> (opcional en la plantilla mínima): si el proxy se expone vía API Gateway, replicar <code>EndpointConfiguration: PRIVATE</code> y <code>VPCEndpointIds</code> como en los APIs existentes.</li>
+          <li><strong>Invocación directa:</strong> sin API Gateway en el borde del proxy; el plano debe permitir que orígenes autorizados llamen <code>lambda:InvokeFunction</code> al ARN del handler (política IAM en el rol del satélite). Ver <a href="infrastructure.html#invocacion-sdk">Infraestructura SAM — invocación SDK</a>.</li>
         </ul>
       </section>
 
@@ -99,7 +99,7 @@
       <section id="samconfig" class="mt-4">
         <h2 class="h4">Relación con <code>samconfig.toml</code></h2>
         <p>
-          Los <code>parameter_overrides</code> del perfil SAM deben <strong>llenar los parámetros</strong> declarados abajo (<code>VPCe</code> solo si usas API privada con resource policy, subnets, SG, <code>AccessPointId</code>, <code>KmsKeyArn</code>, rutas CA/CRL, nombre de tabla de telemetría si lo externalizas).
+          Los <code>parameter_overrides</code> del perfil SAM deben <strong>llenar los parámetros</strong> declarados abajo (subnets, SG, <code>AccessPointId</code>, <code>KmsKeyArn</code>, rutas CA/CRL, nombre de tabla de telemetría si lo externalizas; parámetros legados como <code>VPCe</code> solo si otro recurso del mismo stack los exige).
           La matriz de IDs por ambiente está en <a href="network.html">Manual samconfig.toml</a>.
         </p>
       </section>

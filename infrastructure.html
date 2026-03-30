@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>tld-validador-proxy — Infraestructura SAM (resiliencia SQS)</title>
+  <title>tld-validador-proxy — Infraestructura SAM (Lambda + SQS + EFS)</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/wiki.css" rel="stylesheet">
   <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
@@ -51,18 +51,20 @@
           <a href="index.html">Inicio</a> ·
           <a href="deployment.html">Despliegue (referencia mínima)</a> ·
           <a href="async-worker.html">Capa 2 — SQS y worker</a> ·
+          <a href="flow.html">Flujo General</a> ·
           <a href="network.html">samconfig.toml</a>
         </p>
 
         <h1 class="h2 mb-2">Infraestructura SAM — <code>template.yaml</code> del Proxy</h1>
         <p class="lead text-muted mb-3">
-          Esta página describe el <strong>plano AWS SAM</strong> del <code>tld-validador-proxy</code> siguiendo la <strong>misma estructura de carpetas lógica</strong> que el stack de referencia interna (<code>Parameters</code> → <code>Globals</code> → <code>Conditions</code> → <code>Resources</code>), tomada del <code>template.yaml</code> de <code>tld-notificacion</code>, e incorporando <strong>colas con DLQ</strong>, <strong>IAM granular</strong> y nombres de recursos alineados al proxy.
+          Plano <strong>AWS SAM</strong> del <code>tld-validador-proxy</code> con la <strong>misma estructura de casa</strong> que <code>tld-notificacion</code> (<code>Parameters</code> → <code>Globals</code> → <code>Conditions</code> → <code>Resources</code>), pero <strong>sin API Gateway</strong>: el borde hacia el proxy es <strong>invocación directa de Lambda</strong> (<code>lambda:InvokeFunction</code>) desde satélites en la misma cuenta (u orígenes autorizados vía IAM). Se conservan <strong>VPC, EFS</strong> y <strong>colas SQS con DLQ</strong> para la Capa 2.
         </p>
 
         <nav class="wiki-inpage-toc small mb-4" aria-label="En esta página">
           <div class="fw-semibold mb-2">En esta página</div>
           <ul class="mb-0">
             <li><a href="#reglas-oro">Criterios de diseño (referencia estructural)</a></li>
+            <li><a href="#invocacion-sdk">Invocación directa (<code>lambda:InvokeFunction</code>)</a></li>
             <li><a href="#dlq-visibility">DLQ y <code>VisibilityTimeout</code></a></li>
             <li><a href="#nombres-recursos">Nombres de recursos del proxy</a></li>
             <li><a href="#template-completo"><code>template.yaml</code> propuesto</a></li>
@@ -72,26 +74,39 @@
         <section id="reglas-oro" class="mt-4">
           <h2 class="h3 border-0 pb-0">Criterios de diseño — referencia estructural</h2>
           <ul class="small mb-0">
-            <li><strong>Orden SAM:</strong> Se conserva el orden del molde de casa: bloque <code>Parameters</code> (VPC, subnets, SG, timeout, EFS, rutas CA/CRL, tablas), <code>Globals.Function</code> con <code>VpcConfig</code> y variables de entorno compartidas, <code>Conditions</code> para recursos globales por región, y <code>Resources</code>.</li>
-            <li><strong>Red y PKI:</strong> Los bloques <code>VpcConfig</code> (en <code>Globals</code>) y <code>FileSystemConfigs</code> (por función, con <code>LocalMountPath: /mnt/tld-llaves</code>) se modelan como en el stack de notificaciones, para que operaciones reconozcan el patrón de montaje EFS y certificados.</li>
-            <li><strong>API privada:</strong> Se mantiene el esquema <code>AWS::Serverless::Api</code> con <code>EndpointConfiguration: PRIVATE</code> y <code>VPCEndpointIds</code>, análogo a <code>NotificacionApi</code> (política de recurso con deny fuera del VPCE).</li>
-            <li><strong>Resiliencia:</strong> A diferencia del original, la cola de trabajo del proxy no queda aislada: lleva <code>RedrivePolicy</code> hacia una DLQ dedicada y se elimina el antipatrón de política SQS con <code>Principal: '*'</code> sobre recursos amplios; el envío queda acotado al rol de la Lambda API (y, si aplica, políticas explícitas por ARN).</li>
+            <li><strong>Orden SAM:</strong> <code>Parameters</code> (VPC, subnets, SG, timeout, EFS, rutas CA/CRL, tablas, colas), <code>Globals.Function</code> con <code>VpcConfig</code> y variables compartidas, <code>Conditions</code>, <code>Resources</code>.</li>
+            <li><strong>Red y PKI:</strong> <code>VpcConfig</code> en <code>Globals</code> y <code>FileSystemConfigs</code> por función con <code>LocalMountPath: /mnt/tld-llaves</code>, igual que en el stack de notificaciones.</li>
+            <li><strong>Sin <code>AWS::Serverless::Api</code>:</strong> no hay <code>Events: Api</code> ni <code>VPCEndpointIds</code> para Gateway; la conectividad interna es SDK → Lambda.</li>
+            <li><strong>Resiliencia:</strong> <code>ProxyResilienceQueue</code> con <code>RedrivePolicy</code> hacia <code>ProxyDeadLetterQueue</code>; política de cola sin <code>Principal: '*'</code> ampliado — solo el rol de la Lambda proxy puede <code>SendMessage</code> donde aplique.</li>
           </ul>
+        </section>
+
+        <section id="invocacion-sdk" class="mt-5">
+          <h2 class="h3 border-0 pb-0">Invocación directa — permiso <code>lambda:InvokeFunction</code></h2>
+          <p>
+            Cada satélite que deba llamar al proxy (p. ej. <code>inactividad</code>, <code>alias</code>, <code>p2m</code>) debe llevar en su <strong>rol de ejecución</strong> una sentencia IAM explícita que permita <code>lambda:InvokeFunction</code> sobre el ARN de la función <code>tld-validador-proxy-api</code> (o el nombre que despliegue el stack). No se expone URL HTTP interna del proxy en este modelo.
+          </p>
+          <p>
+            El <strong>timeout efectivo</strong> que percibe el llamador lo fija el <strong>cliente AWS SDK</strong> en el satélite (<code>LambdaClient</code> con configuración de <em>client timeout</em> / intentos de red), además del <code>Timeout</code> configurado en la Lambda del proxy. El equipo debe dimensionar ambos de forma coherente con la <strong>resiliencia controlada</strong> (Capa 1) documentada en <a href="resilience-strategy.html">Estrategia y Capa 1</a> y <a href="data-dictionary.html">Diccionario de datos</a>.
+          </p>
+          <p class="small text-muted mb-0">
+            Contrato de payload y respuesta (incl. semántica <code>202</code> lógica en el cuerpo de retorno): <a href="flow.html">Flujo General</a>.
+          </p>
         </section>
 
         <section id="dlq-visibility" class="mt-5">
           <h2 class="h3 border-0 pb-0">Por qué DLQ y por qué ajustar <code>VisibilityTimeout</code></h2>
           <p>
-            En el diseño previo analizado, la cola principal <strong>no</strong> tenía DLQ configurada en plantilla: los mensajes podían <strong>reentregarse indefinidamente</strong> cuando el procesador registraba la excepción pero no actualizaba contadores ni movía el mensaje a un destino de análisis. Eso dificulta distinguir “cola profunda por incidente” de “veneno silencioso” y retrasa la respuesta operativa.
+            En el diseño previo analizado, la cola principal <strong>no</strong> tenía DLQ configurada en plantilla: los mensajes podían <strong>reentregarse indefinidamente</strong> cuando el procesador registraba la excepción pero no actualizaba contadores ni movía el mensaje a un destino de análisis.
           </p>
           <p>
-            La <strong><code>ProxyDeadLetterQueue</code></strong> (<code>tld-validador-proxy-resilience-dlq</code>) cumple tres funciones: (1) <strong>preservar el payload</strong> tras agotar <code>maxReceiveCount</code> en la cola principal, para inspección y reproceso controlado; (2) <strong>disparar alarmas</strong> CloudWatch sobre profundidad de DLQ; (3) <strong>evitar la pérdida aparente</strong> de notificaciones cuando el worker falla de forma sostenida.
+            La <strong><code>ProxyDeadLetterQueue</code></strong> (<code>tld-validador-proxy-resilience-dlq</code>) preserva el payload tras agotar <code>maxReceiveCount</code>, habilita alarmas y reduce la pérdida aparente de notificaciones cuando el worker falla de forma sostenida.
           </p>
           <p>
-            El <strong><code>VisibilityTimeout</code></strong> de la cola principal debe ser <strong>estrictamente mayor</strong> que el tiempo máximo que la Lambda worker puede tardar en procesar un mensaje (incluyendo llamadas HTTP al validador y backoff interno acotado). Si el timeout de visibilidad es igual o menor que el de la función, SQS puede volver a entregar el mensaje <strong>mientras la invocación sigue viva</strong>, generando <strong>doble procesamiento</strong> y presión duplicada sobre el banco. La guía habitual de AWS es fijar la visibilidad en al menos <strong>seis veces</strong> el timeout de la Lambda consumidora (margen para cold start, extensiones y <code>DeleteMessage</code>). En el fragmento propuesto se usa <code>360</code> segundos frente a <code>Timeout: 60</code> en <code>Globals</code> como punto de partida; el equipo debe validarlo contra el peor caso real del worker.
+            El <strong><code>VisibilityTimeout</code></strong> de la cola principal debe ser <strong>mayor</strong> que el tiempo máximo de procesamiento del worker (HTTP al validador + backoff). La guía habitual es al menos <strong>seis veces</strong> el timeout de la Lambda consumidora. En el fragmento se usa <code>360</code> s frente a <code>Timeout: 60</code> en <code>Globals</code> como punto de partida.
           </p>
           <p class="small text-muted mb-0">
-            Contexto funcional de la Capa 2: <a href="async-worker.html">Arquitectura SQS y worker</a>. Política Opt-in en datos: <a href="resilience-config.html">Manual DynamoDB</a>.
+            Capa 2: <a href="async-worker.html">Arquitectura SQS y worker</a> · datos: <a href="resilience-config.html">Manual DynamoDB</a>.
           </p>
         </section>
 
@@ -107,24 +122,24 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>Cola de resiliencia (trabajo asíncrono)</td>
-                  <td><code>tld-validador-proxy-resilience-queue</code> (<code>QueueName</code>)</td>
+                  <td>Cola de resiliencia</td>
+                  <td><code>tld-validador-proxy-resilience-queue</code></td>
                 </tr>
                 <tr>
                   <td>DLQ</td>
                   <td><code>tld-validador-proxy-resilience-dlq</code></td>
                 </tr>
                 <tr>
-                  <td>Lambda API (handler síncrono + encolado 202)</td>
-                  <td><code>tld-validador-proxy-api</code> (ajustar sufijo por ambiente si política de nombres lo exige)</td>
+                  <td>Lambda principal (invocable por SDK)</td>
+                  <td><code>tld-validador-proxy-api</code> — destino de <code>lambda:InvokeFunction</code></td>
                 </tr>
                 <tr>
-                  <td>Lambda worker (consumidor SQS)</td>
+                  <td>Lambda worker (SQS)</td>
                   <td><code>tld-validador-proxy-resilience-worker</code></td>
                 </tr>
                 <tr>
-                  <td>API Gateway (privada)</td>
-                  <td>Nombre de stack / etapa alineados a <code>DeployEnvironment</code> (mismo criterio que <code>NotificacionApi</code>)</td>
+                  <td>Borde de acceso</td>
+                  <td><strong>Invocación directa</strong> (AWS SDK / consola / EventBridge según diseño); <em>no</em> API Gateway en esta plantilla.</td>
                 </tr>
               </tbody>
             </table>
@@ -134,18 +149,18 @@
         <section id="template-completo" class="mt-5 mb-4">
           <h2 class="h3 border-0 pb-0"><code>template.yaml</code> propuesto (fragmento de stack)</h2>
           <p class="small text-muted">
-            <strong>Borrador de ingeniería:</strong> validar con <code>sam validate</code>, permisos de tablas reales (<code>tld-validador-canal*</code>), KMS y rutas EFS por cuenta. Los <code>Policies</code> sustituyen políticas CRUD genéricas donde el proxy solo necesita lectura de canal u operación; amplía acciones si el código lo exige. La cola policy usa el rol generado por SAM (<code>ProxyApiFunctionRole</code>).
+            <strong>Borrador:</strong> <code>sam validate</code>. Añade en el <em>stack del llamador</em> la política IAM con <code>lambda:InvokeFunction</code> al ARN exportado (o usa <code>Fn::ImportValue</code> si publicas outputs entre stacks). Sin <code>AWS::Serverless::Api</code> ni <code>Events: Api</code>.
           </p>
           <div class="border border-secondary rounded overflow-hidden bg-dark wiki-copy-block wiki-code-scroll">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-bottom border-secondary">
-              <span class="small text-white-50 font-monospace">template.yaml — tld-validador-proxy (molde SAM casa + resiliencia)</span>
+              <span class="small text-white-50 font-monospace">template.yaml — tld-validador-proxy (Lambda + SQS DLQ + EFS)</span>
               <button type="button" class="btn btn-sm btn-outline-light wiki-copy-btn" data-wiki-copy-for="wiki-infra-template-yaml" aria-label="Copiar template.yaml">Copiar</button>
             </div>
             <pre class="wiki-samconfig-pre mb-0 p-3 text-light bg-dark rounded-0"><code id="wiki-infra-template-yaml">AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
   tld-validador-proxy
-  API validador + resiliencia SQS (DLQ) + worker; mismo esqueleto SAM que tld-notificacion.
+  Lambda invocable por SDK + resiliencia SQS (DLQ) + worker; molde SAM alineado a tld-notificacion sin API Gateway.
 
 Parameters:
 
@@ -158,11 +173,6 @@ Parameters:
       - tlrd-highway
     Default: dev
     Description: Nombre del ambiente de despliegue.
-
-  VPCe:
-    Type: String
-    AllowedPattern: "^(vpce-).*"
-    Description: VPCE id para API Gateway privado.
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup::Id
@@ -183,7 +193,7 @@ Parameters:
   Timeout:
     Type: Number
     Default: 60
-    Description: Timeout Lambda (segundos); usar con VisibilityTimeout de cola ≥ 6× este valor.
+    Description: Timeout Lambda (segundos); alinear con cliente SDK del llamador y VisibilityTimeout SQS ≥ 6× worker.
 
   ProxyTelemetryTableName:
     Type: String
@@ -192,12 +202,11 @@ Parameters:
   ResilienceQueueVisibilityTimeout:
     Type: Number
     Default: 360
-    Description: Segundos de visibilidad SQS (recomendado ≥ 6 × Timeout).
+    Description: Visibilidad SQS (recomendado ≥ 6 × Timeout del worker).
 
   ResilienceMaxReceiveCount:
     Type: Number
     Default: 5
-    Description: Recepciones antes de DLQ; alinear con política Opt-in y telemetría.
 
   AccessPointId:
     Type: String
@@ -252,34 +261,6 @@ Conditions:
       - "us-east-1"
 
 Resources:
-
-  ValidadorProxyApi:
-    Type: AWS::Serverless::Api
-    Properties:
-      Name: !Sub "${AWS::StackName}-proxy"
-      StageName: !Ref DeployEnvironment
-      EndpointConfiguration:
-        Type: PRIVATE
-        VPCEndpointIds:
-          - !Ref VPCe
-      Auth:
-        ResourcePolicy:
-          CustomStatements:
-            - Effect: Allow
-              Principal: "*"
-              Action: "execute-api:Invoke"
-              Resource: ["execute-api:/*/*/*"]
-            - Effect: Deny
-              Principal: "*"
-              Action: "execute-api:Invoke"
-              Resource: ["execute-api:/*/*/*"]
-              Condition:
-                StringNotEquals:
-                  aws:SourceVpce: !Ref VPCe
-      Cors:
-        AllowMethods: "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'"
-        AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-        AllowOrigin: "'*'"
 
   ProxyDeadLetterQueue:
     Type: AWS::SQS::Queue
@@ -362,6 +343,7 @@ Resources:
         Variables:
           PROXY_TELEMETRY_TABLE: !Ref ProxyTelemetryTableName
           PROXY_RESILIENCE_QUEUE_URL: !Ref ProxyResilienceQueue
+          DEPLOY_ENVIRONMENT: !Ref DeployEnvironment
       Policies:
         - Statement:
             - Sid: DynamoReadCanalFamily
@@ -396,13 +378,6 @@ Resources:
         - EFSWriteAccessPolicy:
             FileSystem: !Ref EFSResourceId
             AccessPoint: !Ref AccessPointId
-      Events:
-        ProxyHttpApi:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ValidadorProxyApi
-            Path: /proxy
-            Method: post
 
   ProxyWorkerFunction:
     Type: AWS::Serverless::Function
@@ -471,15 +446,18 @@ Resources:
               - ReportBatchItemFailures
 
 Outputs:
+  ProxyApiFunctionArn:
+    Description: ARN Lambda proxy — usar en IAM del llamador (lambda:InvokeFunction)
+    Value: !GetAtt ProxyApiFunction.Arn
+  ProxyApiFunctionName:
+    Description: Nombre función — Invoke(FunctionName)
+    Value: !Ref ProxyApiFunction
   ProxyResilienceQueueUrl:
-    Description: URL cola de trabajo asíncrono
+    Description: URL cola trabajo asíncrono
     Value: !Ref ProxyResilienceQueue
   ProxyDeadLetterQueueUrl:
-    Description: URL DLQ para análisis y reproceso
+    Description: URL DLQ
     Value: !Ref ProxyDeadLetterQueue
-  ProxyApiFunctionArn:
-    Description: ARN Lambda API
-    Value: !GetAtt ProxyApiFunction.Arn
   ProxyWorkerFunctionArn:
     Description: ARN Lambda worker SQS
     Value: !GetAtt ProxyWorkerFunction.Arn
@@ -487,15 +465,15 @@ Outputs:
           </div>
 
           <div class="alert alert-secondary small mt-3 mb-0" role="note">
-            <strong>IAM granular:</strong> Las Lambdas no usan <code>DynamoDBCrudPolicy</code> genérico salvo necesidad; las acciones SQS del worker listan solo recepción, borrado, visibilidad y (opcional) reenvío a la misma cola. La política de cola reemplaza el <code>Principal: '*'</code> / <code>Resource: '*'</code> del stack legado: solo el rol <code>ProxyApiFunctionRole</code> puede <code>SendMessage</code> a <code>ProxyResilienceQueue</code> a nivel de cola (defensa en profundidad junto al IAM de la función).
+            <strong>IAM del llamador (fuera de este snippet):</strong> el rol de la Lambda satélite debe incluir <code>lambda:InvokeFunction</code> sobre <code>!GetAtt ProxyApiFunction.Arn</code> (o el ARN estable del entorno). Así se evita API Gateway y se mantiene <strong>menor privilegio</strong> frente a políticas SQS con <code>Principal '*'</code> del legado.
           </div>
           <p class="small text-muted mt-3 mb-0">
-            Plantilla mínima alternativa (una sola Lambda sin colas): <a href="deployment.html">Despliegue (template)</a>.
+            Variante mínima sin colas: <a href="deployment.html">Despliegue (template)</a>.
           </p>
         </section>
 
         <p class="text-muted small mt-5 mb-1">
-          <strong>Documento:</strong> Infraestructura SAM — resiliencia. <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
+          <strong>Documento:</strong> Infraestructura SAM — Lambda + SQS. <strong>Última actualización:</strong> <time datetime="2026-03-28">28 de marzo de 2026</time>.
         </p>
       </div>
     </main>

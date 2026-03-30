@@ -361,7 +361,7 @@
           <p class="small text-muted mb-0">
             Capa 1 (Resiliencia Opt-in, presupuesto Lambda): <a href="resilience-strategy.html">Estrategia síncrona</a> ·
             diagrama en <a href="flow.html#diagrama-secuencia-reintentos">Flujo General — reintentos</a> ·
-            Capa 2: <a href="async-worker.html">SQS y 202</a> ·
+            Capa 2: <a href="async-worker.html">SQS y 202 lógico</a> ·
             <a href="flow.html#diagrama-notificacion-asincrona">Flujo General — modo asíncrono</a>.
           </p>
 
@@ -372,10 +372,10 @@
             Regla de fusión recomendada: <strong>operación manda cuando está definida</strong>; si <code>retryPolicyActive</code> es <code>false</code>, un solo intento hacia el downstream salvo reglas mínimas de producto.
           </p>
           <p>
-            <strong>Modo síncrono (actual mental del handler):</strong> el cliente espera hasta que el Proxy termina intentos y devuelve 200/4xx/5xx — adecuado cuando el originador necesita resultado inmediato para su propia máquina de estados, pero puede provocar <strong>timeouts en API Gateway</strong> o en la Lambda llamadora si el backoff suma decenas de segundos.
+            <strong>Modo síncrono (actual mental del handler):</strong> el llamador espera en su <code>Invoke</code> hasta que el Proxy termina intentos y devuelve en el payload la semántica 200/4xx/5xx acordada — adecuado cuando el originador necesita resultado inmediato para su propia máquina de estados, pero puede provocar <strong>timeouts del cliente AWS SDK</strong> o de la propia Lambda proxy si el backoff suma decenas de segundos.
           </p>
           <p>
-            <strong>Modo “Fire &amp; Forget” (asíncrono):</strong> el Proxy responde de inmediato <strong>HTTP 202 Accepted</strong> con un <code>requestId</code> / <code>correlationId</code> estable; el trabajo continúa en un <strong>worker</strong> (segunda invocación Lambda, <strong>SQS</strong> + consumidor, o Step Functions) que ejecuta envíos, backoff y registro en telemetría/historial.
+            <strong>Modo “Fire &amp; Forget” (asíncrono):</strong> el Proxy devuelve de inmediato en el <strong>payload de retorno de la invocación</strong> un contrato equivalente a <strong>202 Accepted</strong> (status lógico + <code>requestId</code> / <code>correlationId</code> estable); el trabajo continúa en un <strong>worker</strong> (segunda invocación Lambda, <strong>SQS</strong> + consumidor, o Step Functions) que ejecuta envíos, backoff y registro en telemetría/historial.
             Ventajas: el cliente (<code>inactividad</code>, <code>alias</code>, <code>p2m</code>) no queda bloqueado; la cola proporciona <strong>presión lateral</strong> ante picos y permite DLQ para análisis. Costes: idempotencia obligatoria en el destino o claves de deduplicación; contrato explícito de “aceptado ≠ entregado”; el originador debe consultar estado por API o confiar en webhooks si se añaden más adelante.
           </p>
           <div class="wiki-callout-beginner">
