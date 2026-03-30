@@ -21,6 +21,7 @@
     "network.html": "infra",
     "deployment.html": "infra",
     "infrastructure.html": "infra",
+    "project-structure.html": "infra",
   };
 
   function basename(path) {
@@ -189,6 +190,7 @@
       linkSub("data-dictionary.html#matriz-errores", "Matriz de errores (PROXY_ERR_*)") +
       linkSub("data-dictionary.html#tabla-canal", "Modelo de datos de canal") +
       linkMain("network.html", "📋", "Red (samconfig)", "Parámetros de red y entorno") +
+      linkMain("project-structure.html", "📁", "Estructura del repositorio", "SAM, lambdas/proxy, layer") +
       linkMain("infrastructure.html", "🏗️", "Infraestructura SAM", "Invoke SDK, SQS, DLQ, EFS") +
       linkMain("deployment.html", "📄", "Despliegue (template)", "SAM mínimo / referencia");
 

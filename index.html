@@ -133,7 +133,7 @@
         <div class="wiki-section-eyebrow text-center">Corazón del sistema</div>
         <h2 class="h4 text-center mb-2">Secuencia maestra: orquestación + telemetría lateral</h2>
         <p class="small text-muted text-center mx-auto mb-3" style="max-width: 40rem;">
-          Cada fase crítica deja huella en <strong>Telemetría</strong> (DynamoDB): no bloquea el camino feliz si falla el <code>PutItem</code> (<a href="crypto-transport.html#fail-safe-telemetry">política fail-safe</a>), pero en condiciones normales reconstruyes el incidente como si leyeras la <strong>cinta negra</strong> junto al <strong>portero</strong>. El borde de entrada al proxy es <strong>invocación directa de Lambda</strong> (<code>lambda:InvokeFunction</code>), no API Gateway — ver <a href="infrastructure.html">Infraestructura SAM</a> y <a href="flow.html">Flujo General</a>.
+          Cada fase crítica deja huella en <strong>Telemetría</strong> (DynamoDB): no bloquea el camino feliz si falla el <code>PutItem</code> (<a href="crypto-transport.html#fail-safe-telemetry">política fail-safe</a>), pero en condiciones normales reconstruyes el incidente como si leyeras la <strong>cinta negra</strong> junto al <strong>portero</strong>. El borde de entrada al proxy es <strong>invocación directa de Lambda</strong> (<code>lambda:InvokeFunction</code>), no API Gateway — ver <a href="project-structure.html">Estructura del repositorio</a>, <a href="infrastructure.html">Infraestructura SAM</a> y <a href="flow.html">Flujo General</a>.
         </p>
         <div class="wiki-mermaid-wrap shadow-sm mb-3 wiki-diagram-heart">
           <pre class="mermaid">sequenceDiagram
